@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Player 1 - Buzzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a5c3a 0%, #2d8659 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        @font-face {
+            font-family: 'F37Judge-Bold';
+            src: url('F37Judge-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .disconnected {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .player-info {
+            margin-bottom: 40px;
+        }
+
+        .player-name {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .player-score {
+            font-size: 72px;
+            font-weight: bold;
+            color: #FFD700;
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+        }
+
+        .buzzer-container {
+            position: relative;
+        }
+
+        .buzzer-button {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            font-size: 48px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .buzzer-button.disabled {
+            background-color: #d32f2f;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: not-allowed;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .buzzer-button.active {
+            background-color: #4CAF50;
+            color: white;
+            animation: pulse 2s infinite;
+            cursor: pointer;
+        }
+
+        .buzzer-button.active:active {
+            transform: scale(0.95);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .buzzer-button.buzzed {
+            background-color: #FFD700;
+            color: #333;
+            animation: none;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 10px 30px rgba(76, 175, 80, 0.5);
+            }
+            50% {
+                box-shadow: 0 10px 50px rgba(76, 175, 80, 0.9);
+            }
+        }
+
+        .status-message {
+            margin-top: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .waiting {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .ready {
+            color: #4CAF50;
+        }
+
+        .locked {
+            color: #FFD700;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .player-name {
+                font-size: 36px;
+            }
+
+            .player-score {
+                font-size: 56px;
+            }
+
+            .buzzer-button {
+                width: 250px;
+                height: 250px;
+                font-size: 36px;
+            }
+
+            .status-message {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connection-status">Disconnected</div>
+
+    <div class="player-info">
+        <div class="player-name" id="player-name">Team One</div>
+        <div class="player-score" id="player-score">0</div>
+    </div>
+
+    <div class="buzzer-container">
+        <button class="buzzer-button disabled" id="buzzer-button" disabled>
+            WAIT
+        </button>
+    </div>
+
+    <div class="status-message waiting" id="status-message">
+        Waiting for game to start...
+    </div>
+
+    <script>
+        const PLAYER_ID = 'p1';
+        let ws;
+        let gameState = {};
+        let hasBuzzed = false;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(protocol + '//' + window.location.host);
+
+            ws.onopen = function() {
+                console.log('Player 1 connected');
+                document.getElementById('connection-status').textContent = 'Connected';
+                document.getElementById('connection-status').className = 'connection-status connected';
+
+                // Identify as player 1
+                ws.send(JSON.stringify({
+                    type: 'identify',
+                    role: 'player',
+                    playerId: PLAYER_ID
+                }));
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('Player 1 received:', data);
+
+                switch(data.type) {
+                    case 'game_state':
+                        gameState = data.state;
+                        updateDisplay();
+                        break;
+
+                    case 'update_scores':
+                        if (gameState.scores) {
+                            gameState.scores = data.scores;
+                        }
+                        updateDisplay();
+                        break;
+
+                    case 'buzzer_winner':
+                        // Someone buzzed in
+                        if (data.playerId === PLAYER_ID) {
+                            showBuzzedState();
+                        }
+                        break;
+
+                    case 'next_buzzer_chance':
+                        // Wrong answer - other players get another chance
+                        hasBuzzed = false;
+                        updateDisplay();
+                        break;
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('Player 1 disconnected');
+                document.getElementById('connection-status').textContent = 'Disconnected';
+                document.getElementById('connection-status').className = 'connection-status disconnected';
+                setTimeout(connectWebSocket, 2000);
+            };
+        }
+
+        function updateDisplay() {
+            // Update player name
+            const playerName = gameState.playerNames?.[PLAYER_ID] || 'Team One';
+            document.getElementById('player-name').textContent = playerName;
+
+            // Update score
+            const score = gameState.scores?.[PLAYER_ID] || 0;
+            document.getElementById('player-score').textContent = score;
+
+            // Update buzzer state
+            updateBuzzerState();
+        }
+
+        function updateBuzzerState() {
+            const buzzerButton = document.getElementById('buzzer-button');
+            const statusMessage = document.getElementById('status-message');
+
+            // Check if buzzers are active and player hasn't already buzzed
+            const canBuzz = (gameState.gamePhase === 'QUESTION_SHOWN' || gameState.gamePhase === 'MULTIPLE_CHOICE_SHOWN') &&
+                           gameState.buzzersActive &&
+                           !hasBuzzed &&
+                           !gameState.attemptedPlayers?.includes(PLAYER_ID);
+
+            if (canBuzz) {
+                // Enable buzzer - GREEN
+                buzzerButton.className = 'buzzer-button active';
+                buzzerButton.disabled = false;
+                buzzerButton.textContent = 'BUZZ IN';
+                statusMessage.textContent = 'Buzz in to answer!';
+                statusMessage.className = 'status-message ready';
+            } else if (hasBuzzed || gameState.activePlayer === PLAYER_ID) {
+                // Player has buzzed - YELLOW
+                buzzerButton.className = 'buzzer-button buzzed';
+                buzzerButton.disabled = true;
+                buzzerButton.textContent = 'BUZZED!';
+                statusMessage.textContent = 'You buzzed in! Answer the question.';
+                statusMessage.className = 'status-message locked';
+            } else {
+                // Disabled - RED
+                buzzerButton.className = 'buzzer-button disabled';
+                buzzerButton.disabled = true;
+                buzzerButton.textContent = 'WAIT';
+
+                if (gameState.gamePhase === 'QUESTION_SHOWN' || gameState.gamePhase === 'MULTIPLE_CHOICE_SHOWN') {
+                    statusMessage.textContent = 'Already attempted this question';
+                    statusMessage.className = 'status-message waiting';
+                } else {
+                    statusMessage.textContent = 'Waiting for next question...';
+                    statusMessage.className = 'status-message waiting';
+                }
+            }
+        }
+
+        function showBuzzedState() {
+            hasBuzzed = true;
+            updateBuzzerState();
+        }
+
+        // Buzzer button click handler
+        document.getElementById('buzzer-button').addEventListener('click', function() {
+            if (!this.disabled && !hasBuzzed) {
+                console.log('Player 1 buzzing in!');
+                hasBuzzed = true;
+
+                // Send buzz-in to server
+                ws.send(JSON.stringify({
+                    type: 'buzz_in',
+                    playerId: PLAYER_ID
+                }));
+
+                // Update UI immediately
+                showBuzzedState();
+            }
+        });
+
+        // Connect on load
+        connectWebSocket();
+
+        // Reset hasBuzzed when new question starts OR when multiple choice is shown
+        setInterval(() => {
+            if (gameState.gamePhase === 'READY_FOR_BADGE_SEQUENCE' ||
+                gameState.gamePhase === 'ANSWER_SHOWN' ||
+                gameState.gamePhase === 'MULTIPLE_CHOICE_SHOWN') {
+                hasBuzzed = false;
+            }
+        }, 500);
+    </script>
+</body>
+</html>

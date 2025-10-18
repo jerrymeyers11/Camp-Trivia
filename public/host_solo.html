@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jeopardy Solo Host</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-layout">
+        <!-- Left Panel: Existing Game Controls -->
+        <div class="left-panel">
+            <div class="container">
+                <h1>Solo Host Control</h1>
+                <div id="status">Connecting...</div>
+
+                <!-- Game Selection Section - Hidden by default, shown only when game is in GAME_SELECTION state -->
+                <div id="game-selection" style="display: none; text-align: center; margin-top: 20px; padding: 20px; border: 2px solid #2196F3; border-radius: 10px; transition: all 0.3s ease;">
+                    <h2>🎮 Select Your Game</h2>
+                    <p style="margin: 15px 0; color: #666;">Choose which game version to play:</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                        <button class="game-select-btn" data-game="1" style="font-size: 24px; padding: 30px; background-color: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; transition: transform 0.2s;">
+                            Game 1
+                        </button>
+                        <button class="game-select-btn" data-game="2" style="font-size: 24px; padding: 30px; background-color: #2196F3; color: white; border: none; border-radius: 10px; cursor: pointer; transition: transform 0.2s;">
+                            Game 2
+                        </button>
+                        <button class="game-select-btn" data-game="3" style="font-size: 24px; padding: 30px; background-color: #FF9800; color: white; border: none; border-radius: 10px; cursor: pointer; transition: transform 0.2s;">
+                            Game 3
+                        </button>
+                        <button class="game-select-btn" data-game="4" style="font-size: 24px; padding: 30px; background-color: #9C27B0; color: white; border: none; border-radius: 10px; cursor: pointer; transition: transform 0.2s;">
+                            Game 4
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Team Name Input Section - Hidden by default, shown only when game is in WAITING state -->
+                <div id="team-setup" style="display: none; text-align: center; margin-top: 20px; padding: 20px; border: 2px solid #4CAF50; border-radius: 10px; transition: all 0.3s ease;">
+                    <h2>🎮 New Game - Enter Team Names</h2>
+                    <div style="margin: 15px 0;">
+                        <label for="team1-input" style="display: inline-block; width: 100px; text-align: right; margin-right: 10px;">Team 1:</label>
+                        <input type="text" id="team1-input" placeholder="Enter Team 1 name" style="padding: 8px; font-size: 16px; width: 200px;">
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <label for="team2-input" style="display: inline-block; width: 100px; text-align: right; margin-right: 10px;">Team 2:</label>
+                        <input type="text" id="team2-input" placeholder="Enter Team 2 name" style="padding: 8px; font-size: 16px; width: 200px;">
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <label for="team3-input" style="display: inline-block; width: 100px; text-align: right; margin-right: 10px;">Team 3:</label>
+                        <input type="text" id="team3-input" placeholder="Enter Team 3 name" style="padding: 8px; font-size: 16px; width: 200px;">
+                    </div>
+                    <button id="ready-btn" style="font-size: 18px; padding: 15px 30px; background-color: #2196F3; color: white; margin-top: 15px;">Ready</button>
+                </div>
+
+                <!-- Game Status Display with Visual Indicator -->
+                <div id="game-status-banner" style="text-align: center; margin-top: 10px; padding: 15px; border-radius: 8px; border: 2px solid #ddd; background-color: #f5f5f5;">
+                    <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">
+                        <span id="game-state-icon">⏸️</span> <span id="game-state-label">Game Not Started</span>
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        <strong>Phase:</strong> <span id="game-phase">WAITING</span> |
+                        <strong>Question:</strong> <span id="current-question">1</span> of 8
+                    </div>
+                    <!-- Audio Status Indicator -->
+                    <div style="margin-top: 10px; padding: 8px; border-top: 1px solid #ddd;">
+                        <strong>Gameboard Audio:</strong>
+                        <span id="audio-status" style="display: inline-block; padding: 4px 12px; border-radius: 5px; font-weight: bold; background-color: #f44336; color: white; margin-left: 10px;">
+                            🔇 DISABLED
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Main Game Controls -->
+                <div class="controls" style="text-align: center; margin-top: 20px;">
+                    <button id="preshow-music-btn" style="font-size: 18px; padding: 15px 30px; background-color: #9C27B0; color: white; display: none; margin-right: 10px;">Preshow Music</button>
+                    <button id="main-action-btn" style="font-size: 18px; padding: 15px 30px; background-color: #4CAF50; color: white; display: none;" disabled>Start Game</button>
+                    <div id="audio-warning" style="display: none; margin-top: 10px; padding: 10px; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 5px; color: #856404;">
+                        ⚠️ Click on the gameboard screen to enable audio first
+                    </div>
+                </div>
+
+                <!-- Question Controls (Hidden initially) -->
+                <div id="question-controls" style="display: none; text-align: center; margin-top: 20px; padding: 20px; border: 2px solid #FF9800; border-radius: 10px;">
+                    <h2>Question Controls</h2>
+                    <button id="multiple-choice-btn" style="font-size: 18px; padding: 15px 30px; background-color: #FF9800; color: white; margin: 10px; display: none;">Show Multiple Choice</button>
+                    <button id="wrong-btn" style="font-size: 18px; padding: 15px 30px; background-color: #f44336; color: white; margin: 10px; display: none;">❌ Wrong</button>
+                </div>
+
+                <!-- Buzzer System - Shows who buzzed in and Correct/Incorrect buttons (Hidden initially) -->
+                <div id="buzzer-system" style="display: none; text-align: center; margin-top: 20px; padding: 20px; border: 2px solid #4CAF50; border-radius: 10px;">
+                    <!-- Waiting for Buzz-in State -->
+                    <div id="waiting-for-buzz" style="display: none;">
+                        <h2>⏱️ Waiting for Player to Buzz In...</h2>
+                        <p style="font-size: 18px; color: #666; margin-top: 15px;">Buzzers are active. Players can buzz in now.</p>
+                    </div>
+
+                    <!-- Player Buzzed In State -->
+                    <div id="player-buzzed" style="display: none;">
+                        <h2 style="font-size: 32px; margin-bottom: 20px; color: #2196F3;">
+                            <span id="buzzed-player-name">Team One</span> BUZZED IN!
+                        </h2>
+                        <p style="font-size: 18px; color: #666; margin-bottom: 25px;">Did they answer correctly?</p>
+                        <div style="margin: 20px 0;">
+                            <button id="correct-btn" style="font-size: 24px; padding: 20px 50px; background-color: #4CAF50; color: white; margin: 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold;">✅ CORRECT (<span id="points-to-award">2</span> pts)</button>
+                            <button id="incorrect-btn" style="font-size: 24px; padding: 20px 50px; background-color: #f44336; color: white; margin: 15px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold;">❌ INCORRECT</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tiebreaker Selection (Hidden initially) -->
+                <div id="tiebreaker-selection" style="display: none; text-align: center; margin-top: 20px; padding: 20px; border: 2px solid #9C27B0; border-radius: 10px;">
+                    <h2>🏆 TIEBREAKER 🏆</h2>
+                    <p style="font-size: 16px; margin: 15px 0;">Select the team that answered correctly:</p>
+                    <div id="tiebreaker-buttons" style="margin: 20px 0;">
+                        <!-- Buttons will be dynamically added here -->
+                    </div>
+                </div>
+
+                <!-- Physical Challenge Scoring (Hidden initially) -->
+                <div id="physical-challenge-scoring" style="display: none; text-align: center; margin-top: 20px; padding: 20px; border: 2px solid #FF6B35; border-radius: 10px;">
+                    <h2>🏃‍♂️ Physical Challenge Scoring 🏃‍♂️</h2>
+                    <button id="timer-btn" style="font-size: 18px; padding: 15px 30px; background-color: #2196F3; color: white; margin-bottom: 20px; border-radius: 8px;">⏱️ Timer</button>
+                    <div style="display: flex; justify-content: space-around; margin: 20px 0;">
+                        <div style="border: 2px solid #4CAF50; padding: 15px; border-radius: 8px; min-width: 200px;">
+                            <h3 id="physical-team1-name">Team One</h3>
+                            <div style="margin: 15px 0;">
+                                <span id="physical-score-p1" style="font-size: 32px; font-weight: bold; color: #4CAF50;">0</span> points
+                            </div>
+                            <button id="add-point-p1" style="font-size: 18px; padding: 8px 16px; background-color: #4CAF50; color: white; margin: 5px;">+1</button>
+                            <button id="remove-point-p1" style="font-size: 18px; padding: 8px 16px; background-color: #f44336; color: white; margin: 5px;">-1</button>
+                        </div>
+                        <div style="border: 2px solid #2196F3; padding: 15px; border-radius: 8px; min-width: 200px;">
+                            <h3 id="physical-team2-name">Team Two</h3>
+                            <div style="margin: 15px 0;">
+                                <span id="physical-score-p2" style="font-size: 32px; font-weight: bold; color: #2196F3;">0</span> points
+                            </div>
+                            <button id="add-point-p2" style="font-size: 18px; padding: 8px 16px; background-color: #4CAF50; color: white; margin: 5px;">+1</button>
+                            <button id="remove-point-p2" style="font-size: 18px; padding: 8px 16px; background-color: #f44336; color: white; margin: 5px;">-1</button>
+                        </div>
+                        <div style="border: 2px solid #FF9800; padding: 15px; border-radius: 8px; min-width: 200px;">
+                            <h3 id="physical-team3-name">Team Three</h3>
+                            <div style="margin: 15px 0;">
+                                <span id="physical-score-p3" style="font-size: 32px; font-weight: bold; color: #FF9800;">0</span> points
+                            </div>
+                            <button id="add-point-p3" style="font-size: 18px; padding: 8px 16px; background-color: #4CAF50; color: white; margin: 5px;">+1</button>
+                            <button id="remove-point-p3" style="font-size: 18px; padding: 8px 16px; background-color: #f44336; color: white; margin: 5px;">-1</button>
+                        </div>
+                    </div>
+                    <button id="physical-challenge-done" style="font-size: 20px; padding: 15px 30px; background-color: #9C27B0; color: white; margin-top: 15px;">Done</button>
+                </div>
+
+                <!-- Team Score Display -->
+                <div id="team-scores" style="margin-top: 30px; text-align: center;">
+                    <h2>Current Scores</h2>
+                    <div style="display: flex; justify-content: space-around; margin: 20px 0;">
+                        <div style="border: 2px solid #4CAF50; padding: 15px; border-radius: 8px;">
+                            <h3 id="team1-display-name">Team One</h3>
+                            <div id="team1-display-score" style="font-size: 24px; font-weight: bold;">0</div>
+                        </div>
+                        <div style="border: 2px solid #2196F3; padding: 15px; border-radius: 8px;">
+                            <h3 id="team2-display-name">Team Two</h3>
+                            <div id="team2-display-score" style="font-size: 24px; font-weight: bold;">0</div>
+                        </div>
+                        <div style="border: 2px solid #FF9800; padding: 15px; border-radius: 8px;">
+                            <h3 id="team3-display-name">Team Three</h3>
+                            <div id="team3-display-score" style="font-size: 24px; font-weight: bold;">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Utility Controls -->
+                <div style="border-top: 2px solid #ccc; margin-top: 50px; padding-top: 20px; text-align: center;">
+                    <h3>Utility Controls</h3>
+                    <button id="adjust-score-btn" style="font-size: 16px; padding: 12px 25px; background-color: #FF9800; color: white; border: 2px solid #F57C00; margin: 10px;">✏️ Adjust Score</button>
+                    <button id="reset-game-btn" style="font-size: 16px; padding: 12px 25px; background-color: #f44336; color: white; border: 2px solid #d32f2f; margin: 10px;">🔄 Reset Game</button>
+                    <button id="emergency-end-btn" style="font-size: 16px; padding: 12px 25px; background-color: #E91E63; color: white; border: 2px solid #C2185B; margin: 10px;">🏆 End Game (Emergency)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Host Notes -->
+        <div class="right-panel">
+            <div class="notes-container">
+                <h2>Host Notes</h2>
+
+                <!-- Host Script Section - Appears at start, disappears after first Reveal Question -->
+                <div class="notes-section" id="host-script-section" style="display: block;">
+                    <h3>Opening Script</h3>
+                    <div class="info-display" style="border-left-color: #E91E63; background-color: #fce4ec; max-height: 300px; overflow-y: auto;">
+                        <p style="margin: 0 0 15px 0; line-height: 1.6;">
+                            Howdy! And welcome to the game that shows how NetApp turns even the most homesick IT scouts into Happy Campers, with cloud crafts and AI achievements you'll definitely want to write home about. I'm Paul, and that's Kristen, and it's time to play HAPPY CAMPER!
+                        </p>
+                        <p style="margin: 0; line-height: 1.6;">
+                            Welcome to our contestants, <strong>NAME</strong>, <strong>NAME</strong> and <strong>NAME</strong>. Are you guys ready to play? Great! Here's how it works. The board will automatically land on a merit badge, and I'll ask a corresponding question. If you know the answer, feel free to buzz-in immediately. If not, I'll offer multiple-choice options and the first to buzz in gets to answer. Early answers are worth 2 points—multiple choice are worth 1. Let's play!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Closing Script Section - Appears when winner is revealed -->
+                <div class="notes-section" id="closing-script-section" style="display: none;">
+                    <h3>Closing Script</h3>
+                    <div class="info-display" style="border-left-color: #E91E63; background-color: #fce4ec; max-height: 300px; overflow-y: auto;">
+                        <p style="margin: 0; line-height: 1.6;">
+                            Folks, that's it for Happy Camper. But remember—Camp Cloud isn't all fun and games. Oh, no! Some of it is hard work. So be sure to come back again for some edifying presentations and panel discussions on all things cloud and AI. You can check the schedule there (maybe?) Thanks for joining us, and remember: NetApp can make YOU a Happy Camper, too! Thanks everybody!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Merit Badge Info Section -->
+                <div class="notes-section" id="merit-badge-section">
+                    <h3>Current Merit Badge</h3>
+                    <div id="merit-badge-info" class="info-display">
+                        <em>Select a question to see merit badge info</em>
+                    </div>
+                </div>
+
+                <!-- Question and Answer Section -->
+                <div class="notes-section" id="question-answer-section">
+                    <h3>Question & Answer</h3>
+                    <div id="current-question-display" class="info-display">
+                        <em>Reveal question to see details</em>
+                    </div>
+                    <div id="current-answer-display" class="info-display answer-display">
+                        <em>Answer will appear here</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio elements for sound effects -->
+    <audio id="wrong-audio" preload="auto">
+        <source src="wrong.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="timer-audio" preload="auto">
+        <source src="timer.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Score Adjustment Modal -->
+    <div id="score-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 600px; width: 90%;">
+            <h2 style="margin-top: 0; text-align: center; color: #333;">Adjust Scores</h2>
+
+            <div style="display: flex; flex-direction: column; gap: 20px; margin: 30px 0;">
+                <!-- Team 1 -->
+                <div style="border: 2px solid #4CAF50; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 id="modal-team1-name" style="margin: 0 0 10px 0;">Team One</h3>
+                        <span id="modal-team1-score" style="font-size: 32px; font-weight: bold; color: #4CAF50;">0</span>
+                    </div>
+                    <div>
+                        <button id="modal-add-p1" style="font-size: 20px; padding: 10px 20px; background-color: #4CAF50; color: white; margin: 5px; border-radius: 5px; border: none; cursor: pointer;">+1</button>
+                        <button id="modal-sub-p1" style="font-size: 20px; padding: 10px 20px; background-color: #f44336; color: white; margin: 5px; border-radius: 5px; border: none; cursor: pointer;">-1</button>
+                    </div>
+                </div>
+
+                <!-- Team 2 -->
+                <div style="border: 2px solid #2196F3; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 id="modal-team2-name" style="margin: 0 0 10px 0;">Team Two</h3>
+                        <span id="modal-team2-score" style="font-size: 32px; font-weight: bold; color: #2196F3;">0</span>
+                    </div>
+                    <div>
+                        <button id="modal-add-p2" style="font-size: 20px; padding: 10px 20px; background-color: #4CAF50; color: white; margin: 5px; border-radius: 5px; border: none; cursor: pointer;">+1</button>
+                        <button id="modal-sub-p2" style="font-size: 20px; padding: 10px 20px; background-color: #f44336; color: white; margin: 5px; border-radius: 5px; border: none; cursor: pointer;">-1</button>
+                    </div>
+                </div>
+
+                <!-- Team 3 -->
+                <div style="border: 2px solid #FF9800; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 id="modal-team3-name" style="margin: 0 0 10px 0;">Team Three</h3>
+                        <span id="modal-team3-score" style="font-size: 32px; font-weight: bold; color: #FF9800;">0</span>
+                    </div>
+                    <div>
+                        <button id="modal-add-p3" style="font-size: 20px; padding: 10px 20px; background-color: #4CAF50; color: white; margin: 5px; border-radius: 5px; border: none; cursor: pointer;">+1</button>
+                        <button id="modal-sub-p3" style="font-size: 20px; padding: 10px 20px; background-color: #f44336; color: white; margin: 5px; border-radius: 5px; border: none; cursor: pointer;">-1</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button id="modal-done-btn" style="font-size: 18px; padding: 15px 40px; background-color: #9C27B0; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Override any existing styles that might interfere */
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .main-layout {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            height: 100vh !important;
+            gap: 20px !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+            width: 100vw !important;
+            align-items: flex-start !important;
+        }
+
+        .left-panel {
+            flex: 1 !important;
+            overflow-y: auto !important;
+            max-height: calc(100vh - 40px) !important;
+            min-width: 0 !important;
+            width: auto !important;
+        }
+
+        .right-panel {
+            flex: 0 0 350px !important;
+            background-color: #f8f9fa !important;
+            border: 2px solid #dee2e6 !important;
+            border-radius: 10px !important;
+            padding: 20px !important;
+            overflow-y: auto !important;
+            max-height: calc(100vh - 40px) !important;
+            box-sizing: border-box !important;
+            width: 350px !important;
+            min-width: 350px !important;
+        }
+
+        /* Keep the original container styling but align left in the left panel */
+        .left-panel .container {
+            max-width: 800px !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            background: white !important;
+            border-radius: 8px !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .notes-container h2 {
+            margin-top: 0;
+            color: #343a40;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 10px;
+        }
+
+        .notes-section {
+            margin-bottom: 30px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .notes-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 18px;
+        }
+
+        .info-display {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 10px;
+            min-height: 60px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .info-display em {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .answer-display {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+        }
+
+        .answer-display.revealed {
+            font-weight: bold;
+            color: #155724;
+        }
+
+        .game-select-btn:hover {
+            transform: scale(1.05) !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .right-panel {
+                flex: 0 0 350px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .right-panel {
+                flex: none;
+                max-height: 400px;
+            }
+        }
+    </style>
+
+    <script>
+        let ws;
+        let gameState = {};
+        let multipleChoiceRevealed = false; // Track if MC has been shown
+        let physicalChallengeScores = { p1: 0, p2: 0, p3: 0 }; // Track physical challenge points
+        let firstQuestionRevealed = false; // Track if first question has been revealed
+        let lastPhysicalChallengeIndex = -1; // Track which physical challenge we're on
+
+        // Merit badge name mapping (populated from server when game is selected)
+        const meritBadgeNames = {};
+
+        // Function to update merit badge display in notes panel
+        function updateMeritBadgeDisplay() {
+            const meritBadgeInfo = document.getElementById('merit-badge-info');
+
+            if (gameState.currentQuestion && gameState.currentQuestion.meritBadge) {
+                // Use the actual merit badge number from server data
+                const badgeNumber = gameState.currentQuestion.meritBadge;
+                const badgeName = meritBadgeNames[badgeNumber] || `Merit Badge ${badgeNumber}`;
+
+                meritBadgeInfo.innerHTML = `
+                    <strong>Merit Badge:</strong> ${badgeName}<br>
+                    <em>Question ${gameState.currentQuestionIndex + 1} of the game</em>
+                `;
+            } else if (gameState.currentQuestionIndex !== undefined && gameState.currentQuestionIndex >= 0) {
+                // Fallback to show question number if merit badge data not available yet
+                const questionNum = gameState.currentQuestionIndex + 1;
+                const badgeName = meritBadgeNames[questionNum] || `Merit Badge ${questionNum}`;
+
+                meritBadgeInfo.innerHTML = `
+                    <strong>Merit Badge:</strong> ${badgeName}<br>
+                    <em>Question ${questionNum} - Merit badge info loading...</em>
+                `;
+            } else {
+                meritBadgeInfo.innerHTML = '<em>Select a question to see merit badge info</em>';
+            }
+        }
+
+        // Function to update question and answer display in notes panel
+        function updateQuestionAnswerDisplay(question = null, answer = null, showAnswer = false, multipleChoice = null, showMultipleChoice = false) {
+            const questionDisplay = document.getElementById('current-question-display');
+            const answerDisplay = document.getElementById('current-answer-display');
+
+            if (question) {
+                let questionHtml = `<strong>Question:</strong><br>${question}`;
+
+                // Add multiple choice options if they should be shown
+                if (multipleChoice && showMultipleChoice) {
+                    questionHtml += `<br><br><strong>Multiple Choice Options:</strong><br>`;
+                    multipleChoice.forEach(option => {
+                        questionHtml += `${option}<br>`;
+                    });
+                }
+
+                questionDisplay.innerHTML = questionHtml;
+            } else {
+                questionDisplay.innerHTML = '<em>Reveal question to see details</em>';
+            }
+
+            if (answer && showAnswer) {
+                answerDisplay.innerHTML = `<strong>Correct Answer:</strong><br>${answer}`;
+                answerDisplay.classList.add('revealed');
+            } else if (answer) {
+                answerDisplay.innerHTML = `<strong>Answer:</strong><br><span style="background: #fff3cd; padding: 2px 6px; border-radius: 3px;">Hidden until question is revealed</span>`;
+                answerDisplay.classList.remove('revealed');
+            } else {
+                answerDisplay.innerHTML = '<em>Answer will appear here</em>';
+                answerDisplay.classList.remove('revealed');
+            }
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(protocol + '//' + window.location.host);
+
+            ws.onopen = function() {
+                console.log('Connected to server');
+                document.getElementById('status').textContent = 'Connected';
+                // Identify as solo host
+                ws.send(JSON.stringify({
+                    type: 'identify',
+                    role: 'host_solo'
+                }));
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+
+                switch(data.type) {
+                    case 'game_selected':
+                        console.log('=== GAME SELECTED ===');
+                        console.log('Game number:', data.gameNumber);
+                        console.log('Merit badge names received:', data.meritBadgeNames);
+                        // Update merit badge names from server
+                        if (data.meritBadgeNames) {
+                            Object.assign(meritBadgeNames, data.meritBadgeNames);
+                        }
+                        break;
+
+                    case 'game_state':
+                        console.log('=== RECEIVED GAME STATE UPDATE ===');
+                        console.log('New game phase:', data.state.gamePhase);
+                        console.log('Previous game phase:', gameState.gamePhase);
+
+                        gameState = data.state;
+                        updateGameDisplay();
+                        break;
+
+                    case 'audio_status':
+                        console.log('Audio status update:', data.enabled);
+                        updateAudioStatus(data.enabled);
+                        break;
+
+                    case 'update_scores':
+                        console.log('=== RECEIVED SCORE UPDATE ===');
+                        console.log('New scores:', data.scores);
+                        gameState.scores = data.scores;
+                        updateGameDisplay();
+                        break;
+
+                    case 'buzzer_winner':
+                        console.log('=== PLAYER BUZZED IN ===');
+                        console.log('Player ID:', data.playerId);
+                        console.log('Player name:', data.playerName);
+                        // Update UI to show which player buzzed in
+                        showBuzzerWinner(data.playerId, data.playerName);
+                        break;
+
+                    case 'next_buzzer_chance':
+                        console.log('=== INCORRECT - OTHER PLAYERS CAN TRY ===');
+                        // Show waiting for buzz again
+                        showWaitingForBuzz();
+                        break;
+
+                    // We'll add more cases as we define the flow
+                }
+            };
+
+            ws.onclose = function() {
+                console.log('Disconnected from server');
+                document.getElementById('status').textContent = 'Disconnected - Reconnecting...';
+                setTimeout(connectWebSocket, 2000);
+            };
+        }
+
+        function updateGameDisplay() {
+            // Update team names in score display
+            const team1Name = gameState.playerNames?.p1 || 'Team One';
+            const team2Name = gameState.playerNames?.p2 || 'Team Two';
+            const team3Name = gameState.playerNames?.p3 || 'Team Three';
+
+            document.getElementById('team1-display-name').textContent = team1Name;
+            document.getElementById('team2-display-name').textContent = team2Name;
+            document.getElementById('team3-display-name').textContent = team3Name;
+
+            // Update scores
+            document.getElementById('team1-display-score').textContent = gameState.scores?.p1 || 0;
+            document.getElementById('team2-display-score').textContent = gameState.scores?.p2 || 0;
+            document.getElementById('team3-display-score').textContent = gameState.scores?.p3 || 0;
+
+            // Update game phase and question
+            document.getElementById('game-phase').textContent = gameState.gamePhase || 'WAITING';
+            document.getElementById('current-question').textContent = (gameState.currentQuestionIndex || 0) + 1;
+
+            // Update visual game status banner
+            updateGameStatusBanner();
+
+            // Show/hide controls based on game phase
+            updateControlsVisibility();
+
+            // Update notes panel
+            updateMeritBadgeDisplay();
+
+            // Update question/answer display based on game phase
+            if (gameState.gamePhase === 'TV_AD_PLAYING') {
+                // Show sponsor message during TV ad
+                updateQuestionAnswerDisplay(
+                    "Okay now it's time for a message from our sponsor. You know, after a long day on the IT trail, my data can end up feeling de-centralized, diffuse and dis-aggregated. That's when I reach for the solution I need to keep my storage structured, and my algorithms protected: NetApp. Now available in SMB, Public, or Enterprise-sized. Whether your data is cold or hot, NetApp keeps it clear, flowing and virus-free…. NetApp. The brand I trust.",
+                    null,
+                    false,
+                    null,
+                    false
+                );
+            } else if (gameState.currentQuestion) {
+                const showAnswer = gameState.gamePhase === 'QUESTION_SHOWN' ||
+                                 gameState.gamePhase === 'MULTIPLE_CHOICE_SHOWN' ||
+                                 gameState.gamePhase === 'ANSWER_SHOWN' ||
+                                 gameState.gamePhase === 'PHYSICAL_CHALLENGE';
+                // Only show question AFTER "Reveal Question" is clicked (QUESTION_SHOWN phase)
+                const showQuestion = showAnswer;
+
+                if (showQuestion) {
+                    updateQuestionAnswerDisplay(
+                        gameState.currentQuestion.question,
+                        gameState.currentQuestion.answer,
+                        showAnswer,
+                        gameState.currentQuestion.multipleChoice,
+                        multipleChoiceRevealed
+                    );
+                } else if (gameState.gamePhase === 'READY_TO_SHOW_QUESTION') {
+                    // Show a helpful message when ready to reveal but don't show the actual question yet
+                    updateQuestionAnswerDisplay(
+                        "Click 'Reveal Question' to see the question here",
+                        gameState.currentQuestion.answer,
+                        false,
+                        gameState.currentQuestion.multipleChoice,
+                        false
+                    );
+                } else {
+                    updateQuestionAnswerDisplay();
+                }
+            } else {
+                updateQuestionAnswerDisplay();
+            }
+        }
+
+        function updateAudioStatus(enabled) {
+            const audioStatus = document.getElementById('audio-status');
+            const mainActionBtn = document.getElementById('main-action-btn');
+            const audioWarning = document.getElementById('audio-warning');
+
+            if (enabled) {
+                audioStatus.style.backgroundColor = '#4CAF50'; // Green
+                audioStatus.textContent = '🔊 ENABLED';
+
+                // Enable the Start Game button and hide warning
+                mainActionBtn.disabled = false;
+                mainActionBtn.style.opacity = '1';
+                mainActionBtn.style.cursor = 'pointer';
+                if (audioWarning) {
+                    audioWarning.style.display = 'none';
+                }
+            } else {
+                audioStatus.style.backgroundColor = '#f44336'; // Red
+                audioStatus.textContent = '🔇 DISABLED';
+
+                // Disable the Start Game button and show warning when it's visible
+                mainActionBtn.disabled = true;
+                mainActionBtn.style.opacity = '0.5';
+                mainActionBtn.style.cursor = 'not-allowed';
+                if (audioWarning && mainActionBtn.style.display !== 'none') {
+                    audioWarning.style.display = 'block';
+                }
+            }
+        }
+
+        function updateGameStatusBanner() {
+            const banner = document.getElementById('game-status-banner');
+            const icon = document.getElementById('game-state-icon');
+            const label = document.getElementById('game-state-label');
+
+            // Update banner appearance based on game phase
+            switch (gameState.gamePhase) {
+                case 'GAME_SELECTION':
+                    banner.style.backgroundColor = '#e3f2fd';
+                    banner.style.borderColor = '#2196F3';
+                    icon.textContent = '🎮';
+                    label.textContent = 'Select Game Version';
+                    break;
+                case 'WAITING':
+                    banner.style.backgroundColor = '#fff3cd';
+                    banner.style.borderColor = '#ffc107';
+                    icon.textContent = '⏸️';
+                    label.textContent = 'Game Not Started';
+                    break;
+                case 'PRESHOW_ACTIVE':
+                    banner.style.backgroundColor = '#e1bee7';
+                    banner.style.borderColor = '#9C27B0';
+                    icon.textContent = '🎵';
+                    label.textContent = 'Preshow Music Playing';
+                    break;
+                case 'LIGHTS':
+                case 'BADGE_SELECTION':
+                    banner.style.backgroundColor = '#d1ecf1';
+                    banner.style.borderColor = '#17a2b8';
+                    icon.textContent = '🎬';
+                    label.textContent = 'Game In Progress';
+                    break;
+                case 'READY_FOR_BADGE_SEQUENCE':
+                case 'READY_TO_SHOW_QUESTION':
+                    banner.style.backgroundColor = '#d1ecf1';
+                    banner.style.borderColor = '#17a2b8';
+                    icon.textContent = '⏭️';
+                    label.textContent = 'Ready for Next Question';
+                    break;
+                case 'QUESTION_SHOWN':
+                case 'MULTIPLE_CHOICE_SHOWN':
+                case 'PLAYER_BUZZED':
+                    banner.style.backgroundColor = '#d4edda';
+                    banner.style.borderColor = '#28a745';
+                    icon.textContent = '▶️';
+                    label.textContent = 'Question Active';
+                    break;
+                case 'PHYSICAL_CHALLENGE':
+                    banner.style.backgroundColor = '#e2d4f7';
+                    banner.style.borderColor = '#9C27B0';
+                    icon.textContent = '🏃';
+                    label.textContent = 'Physical Challenge Active';
+                    break;
+                case 'ANSWER_SHOWN':
+                    banner.style.backgroundColor = '#f8d7da';
+                    banner.style.borderColor = '#f5c6cb';
+                    icon.textContent = '✅';
+                    label.textContent = 'Answer Revealed';
+                    break;
+                case 'TV_AD_READY':
+                case 'TV_AD_PLAYING':
+                    banner.style.backgroundColor = '#d6d8db';
+                    banner.style.borderColor = '#6c757d';
+                    icon.textContent = '📺';
+                    label.textContent = 'TV Ad Break';
+                    break;
+                case 'TIEBREAKER_READY':
+                case 'TIEBREAKER_ACTIVE':
+                    banner.style.backgroundColor = '#e1bee7';
+                    banner.style.borderColor = '#9C27B0';
+                    icon.textContent = '🏆';
+                    label.textContent = 'Tiebreaker';
+                    break;
+                case 'READY_TO_REVEAL_WINNER':
+                case 'WINNER_REVEALED':
+                    banner.style.backgroundColor = '#fce4ec';
+                    banner.style.borderColor = '#E91E63';
+                    icon.textContent = '🏆';
+                    label.textContent = 'Game Complete';
+                    break;
+                default:
+                    banner.style.backgroundColor = '#f5f5f5';
+                    banner.style.borderColor = '#ddd';
+                    icon.textContent = '❓';
+                    label.textContent = 'Unknown State';
+            }
+        }
+
+        // Show waiting for buzz-in state
+        function showWaitingForBuzz() {
+            console.log('Showing waiting for buzz-in state');
+            document.getElementById('buzzer-system').style.display = 'block';
+            document.getElementById('waiting-for-buzz').style.display = 'block';
+            document.getElementById('player-buzzed').style.display = 'none';
+        }
+
+        // Show player buzzed in state
+        function showBuzzerWinner(playerId, playerName) {
+            console.log(`Showing ${playerName} buzzed in`);
+            const points = multipleChoiceRevealed ? 1 : 2;
+
+            document.getElementById('buzzer-system').style.display = 'block';
+            document.getElementById('waiting-for-buzz').style.display = 'none';
+            document.getElementById('player-buzzed').style.display = 'block';
+            document.getElementById('buzzed-player-name').textContent = playerName;
+            document.getElementById('points-to-award').textContent = points;
+
+            // Store the player ID for the Correct/Incorrect buttons
+            document.getElementById('correct-btn').dataset.playerId = playerId;
+            document.getElementById('incorrect-btn').dataset.playerId = playerId;
+        }
+
+        function updateControlsVisibility() {
+            const mainActionBtn = document.getElementById('main-action-btn');
+            const preshowMusicBtn = document.getElementById('preshow-music-btn');
+            const gameSelection = document.getElementById('game-selection');
+            const teamSetup = document.getElementById('team-setup');
+            const audioWarning = document.getElementById('audio-warning');
+            const hostScriptSection = document.getElementById('host-script-section');
+            console.log('updateControlsVisibility called with phase:', gameState.gamePhase);
+
+            // Clear physical challenge tracking when NOT in physical challenge phase
+            if (gameState.gamePhase !== 'PHYSICAL_CHALLENGE' && lastPhysicalChallengeIndex !== -1) {
+                console.log('Not in physical challenge phase - clearing tracking variable');
+                lastPhysicalChallengeIndex = -1;
+            }
+
+            // Show game selection if in GAME_SELECTION phase
+            if (gameState.gamePhase === 'GAME_SELECTION' && gameSelection) {
+                gameSelection.style.display = 'block';
+                if (teamSetup) teamSetup.style.display = 'none';
+                mainActionBtn.style.display = 'none';
+                preshowMusicBtn.style.display = 'none';
+                if (audioWarning) audioWarning.style.display = 'none';
+                return;
+            } else if (gameSelection) {
+                gameSelection.style.display = 'none';
+            }
+
+            // ONLY show team setup if game is in WAITING or PRESHOW_ACTIVE phase AND scores are all 0
+            const isNewGame = (gameState.gamePhase === 'WAITING' || gameState.gamePhase === 'PRESHOW_ACTIVE') &&
+                              gameState.scores?.p1 === 0 &&
+                              gameState.scores?.p2 === 0 &&
+                              gameState.scores?.p3 === 0 &&
+                              gameState.currentQuestionIndex === 0;
+
+            if (isNewGame && teamSetup) {
+                teamSetup.style.display = 'block';
+                mainActionBtn.style.display = 'none';
+                if (audioWarning) audioWarning.style.display = 'none';
+            } else if (teamSetup) {
+                teamSetup.style.display = 'none';
+            }
+
+            // Show host script at start, hide it when first question is revealed
+            if (hostScriptSection) {
+                if (firstQuestionRevealed) {
+                    hostScriptSection.style.display = 'none';
+                } else {
+                    hostScriptSection.style.display = 'block';
+                }
+            }
+
+            // Show closing script when winner is revealed
+            const closingScriptSection = document.getElementById('closing-script-section');
+            if (closingScriptSection) {
+                if (gameState.gamePhase === 'WINNER_REVEALED') {
+                    closingScriptSection.style.display = 'block';
+                } else {
+                    closingScriptSection.style.display = 'none';
+                }
+            }
+
+            // HANDLE ANSWER STATES FIRST (highest priority)
+            // Show Done button and hide question controls when answer is shown (or being shown)
+            if (gameState.gamePhase === 'ANSWER_SHOWN' || gameState.gamePhase === 'CORRECT_ANSWER') {
+                console.log('=== ANSWER/CORRECT_ANSWER PHASE - HIDING BUZZER SYSTEM ===');
+                document.getElementById('question-controls').style.display = 'none';
+                document.getElementById('buzzer-system').style.display = 'none'; // Hide buzzer system
+                document.getElementById('physical-challenge-scoring').style.display = 'none';
+                mainActionBtn.style.display = 'inline-block'; // Show Done button
+                mainActionBtn.textContent = 'Done';
+                mainActionBtn.style.backgroundColor = '#9C27B0'; // Purple color
+                return; // Exit early - don't process other phase checks
+            }
+
+            // Update main action button text based on game phase
+            switch (gameState.gamePhase) {
+                case 'WAITING':
+                    mainActionBtn.textContent = 'Start Game';
+                    mainActionBtn.style.backgroundColor = '#4CAF50';
+                    // Show preshow button when ready to start
+                    preshowMusicBtn.style.display = 'inline-block';
+                    break;
+                case 'PRESHOW_ACTIVE':
+                    mainActionBtn.textContent = 'Start Game';
+                    mainActionBtn.style.backgroundColor = '#4CAF50';
+                    // Hide preshow button once it's been clicked
+                    preshowMusicBtn.style.display = 'none';
+                    break;
+                case 'READY_FOR_BADGE_SEQUENCE':
+                    mainActionBtn.textContent = 'Choose Question';
+                    mainActionBtn.style.backgroundColor = '#2196F3';
+                    break;
+                case 'READY_TO_SHOW_QUESTION':
+                    mainActionBtn.textContent = 'Reveal Question';
+                    mainActionBtn.style.backgroundColor = '#FF9800';
+                    break;
+                case 'ANSWER_SHOWN':
+                    mainActionBtn.textContent = 'Done';
+                    mainActionBtn.style.backgroundColor = '#9C27B0'; // Purple color
+                    break;
+                case 'TV_AD_READY':
+                    mainActionBtn.textContent = 'TV Ad';
+                    mainActionBtn.style.backgroundColor = '#FF5722'; // Orange-red for TV ad
+                    break;
+                case 'TV_AD_PLAYING':
+                    mainActionBtn.textContent = 'End Ad';
+                    mainActionBtn.style.backgroundColor = '#795548'; // Brown for end ad
+                    break;
+                case 'PHYSICAL_CHALLENGE':
+                    // No button needed during physical challenge (they use the Done button in the interface)
+                    break;
+                case 'TIEBREAKER_READY':
+                    mainActionBtn.textContent = 'Start Tiebreaker';
+                    mainActionBtn.style.backgroundColor = '#9C27B0'; // Purple for tiebreaker
+                    break;
+                case 'TIEBREAKER_ACTIVE':
+                    // No button needed during tiebreaker (they use the team selection buttons)
+                    mainActionBtn.style.display = 'none';
+                    break;
+                case 'READY_TO_REVEAL_WINNER':
+                    mainActionBtn.textContent = 'Reveal Winner';
+                    mainActionBtn.style.backgroundColor = '#E91E63'; // Pink color for finale
+                    break;
+                case 'WINNER_REVEALED':
+                    // Show "Play Outro" button
+                    mainActionBtn.textContent = 'Play Outro';
+                    mainActionBtn.style.backgroundColor = '#FF9800'; // Orange color
+                    mainActionBtn.style.display = 'inline-block';
+                    break;
+            }
+
+            // Show question controls and buzzer system after "Reveal Question" is clicked
+            if (gameState.gamePhase === 'QUESTION_SHOWN' || gameState.gamePhase === 'MULTIPLE_CHOICE_SHOWN') {
+                console.log('=== REGULAR QUESTION REVEALED ===');
+                console.log('Current question index:', gameState.currentQuestionIndex);
+                console.log('Game phase:', gameState.gamePhase);
+
+                // Mark that first question has been revealed (hide host script)
+                firstQuestionRevealed = true;
+
+                // Reset MC state for new question ONLY if it's the initial question reveal
+                if (gameState.gamePhase === 'QUESTION_SHOWN' && gameState.buzzersActive && !gameState.activePlayer) {
+                    multipleChoiceRevealed = false;
+                }
+
+                // Show regular trivia interface
+                document.getElementById('question-controls').style.display = 'block';
+                // Show multiple choice button for new question
+                document.getElementById('multiple-choice-btn').style.display = 'inline-block';
+                document.getElementById('wrong-btn').style.display = 'none'; // Hidden - using Incorrect button instead
+                document.getElementById('physical-challenge-scoring').style.display = 'none';
+
+                // Show buzzer system based on active player state
+                if (gameState.activePlayer && gameState.gamePhase === 'PLAYER_BUZZED') {
+                    // Someone has buzzed in - show who it is
+                    const playerName = gameState.playerNames?.[gameState.activePlayer] || `Team ${gameState.activePlayer.slice(-1)}`;
+                    showBuzzerWinner(gameState.activePlayer, playerName);
+                } else if (gameState.buzzersActive) {
+                    // Buzzers are active, waiting for someone to buzz
+                    showWaitingForBuzz();
+                } else {
+                    // Hide buzzer system
+                    document.getElementById('buzzer-system').style.display = 'none';
+                }
+
+                // Hide main action button when question is shown (no next action needed)
+                mainActionBtn.style.display = 'none';
+            }
+
+            // Show PLAYER_BUZZED state
+            if (gameState.gamePhase === 'PLAYER_BUZZED') {
+                console.log('=== PLAYER BUZZED STATE ===');
+                const playerName = gameState.playerNames?.[gameState.activePlayer] || `Team ${gameState.activePlayer.slice(-1)}`;
+                showBuzzerWinner(gameState.activePlayer, playerName);
+
+                document.getElementById('question-controls').style.display = 'block';
+                document.getElementById('multiple-choice-btn').style.display = gameState.multipleChoiceRevealed ? 'none' : 'inline-block';
+                document.getElementById('wrong-btn').style.display = 'none'; // Hidden - using Incorrect button instead
+                mainActionBtn.style.display = 'none';
+            }
+
+            // Show physical challenge interface when in PHYSICAL_CHALLENGE phase
+            if (gameState.gamePhase === 'PHYSICAL_CHALLENGE') {
+                console.log('=== PHYSICAL CHALLENGE REVEALED ===');
+                console.log('Current question index:', gameState.currentQuestionIndex);
+                console.log('Last physical challenge index:', lastPhysicalChallengeIndex);
+                console.log('Showing physical challenge interface');
+
+                // Mark that first question has been revealed (hide host script)
+                firstQuestionRevealed = true;
+
+                // Show physical challenge scoring interface
+                document.getElementById('physical-challenge-scoring').style.display = 'block';
+                document.getElementById('question-controls').style.display = 'none';
+                // Note: player-scoring element doesn't exist in this version
+
+                // Update team names in physical challenge interface
+                document.getElementById('physical-team1-name').textContent = gameState.playerNames?.p1 || 'Team One';
+                document.getElementById('physical-team2-name').textContent = gameState.playerNames?.p2 || 'Team Two';
+                document.getElementById('physical-team3-name').textContent = gameState.playerNames?.p3 || 'Team Three';
+
+                // Reset only when it's a NEW physical challenge (tracking is cleared when we leave the phase)
+                // Since tracking is set to -1 when leaving physical challenge, it will always != currentQuestionIndex
+                // on first entry to a new physical challenge
+                console.log('=== PHYSICAL CHALLENGE CHECK ===');
+                console.log('Current question index:', gameState.currentQuestionIndex);
+                console.log('Last physical challenge index:', lastPhysicalChallengeIndex);
+                console.log('Current physicalChallengeScores:', physicalChallengeScores);
+                console.log('Current display values:', {
+                    p1: document.getElementById('physical-score-p1').textContent,
+                    p2: document.getElementById('physical-score-p2').textContent,
+                    p3: document.getElementById('physical-score-p3').textContent
+                });
+
+                if (lastPhysicalChallengeIndex !== gameState.currentQuestionIndex) {
+                    console.log('=== NEW PHYSICAL CHALLENGE - RESETTING SCORES AND BUTTON ===');
+
+                    // Update tracking FIRST
+                    lastPhysicalChallengeIndex = gameState.currentQuestionIndex;
+
+                    // Force reset physical challenge scores object
+                    physicalChallengeScores.p1 = 0;
+                    physicalChallengeScores.p2 = 0;
+                    physicalChallengeScores.p3 = 0;
+                    console.log('physicalChallengeScores after reset:', physicalChallengeScores);
+
+                    // Force reset display elements
+                    const score1 = document.getElementById('physical-score-p1');
+                    const score2 = document.getElementById('physical-score-p2');
+                    const score3 = document.getElementById('physical-score-p3');
+
+                    if (score1) score1.textContent = '0';
+                    if (score2) score2.textContent = '0';
+                    if (score3) score3.textContent = '0';
+
+                    console.log('Display elements after reset:', {
+                        p1: score1 ? score1.textContent : 'NOT FOUND',
+                        p2: score2 ? score2.textContent : 'NOT FOUND',
+                        p3: score3 ? score3.textContent : 'NOT FOUND'
+                    });
+
+                    // Always reset the Done button state
+                    const doneButton = document.getElementById('physical-challenge-done');
+                    if (doneButton) {
+                        doneButton.disabled = false;
+                        doneButton.textContent = 'Done';
+                        console.log('Done button reset: enabled=true, text="Done"');
+                    } else {
+                        console.error('Done button not found!');
+                    }
+                } else {
+                    console.log('Same physical challenge (index ' + gameState.currentQuestionIndex + ') - keeping scores and button state');
+                }
+
+                // Hide main action button when physical challenge is shown
+                mainActionBtn.style.display = 'none';
+            }
+
+            // Show tiebreaker interface when in TIEBREAKER_ACTIVE phase
+            if (gameState.gamePhase === 'TIEBREAKER_ACTIVE') {
+                console.log('=== TIEBREAKER ACTIVE ===');
+                console.log('Tied players:', gameState.tiedPlayers);
+
+                // Show tiebreaker selection interface
+                document.getElementById('tiebreaker-selection').style.display = 'block';
+                document.getElementById('question-controls').style.display = 'none';
+                // Note: player-scoring element doesn't exist in this version
+                document.getElementById('physical-challenge-scoring').style.display = 'none';
+
+                // Create buttons for tied teams
+                const tiebreakerButtonsContainer = document.getElementById('tiebreaker-buttons');
+                tiebreakerButtonsContainer.innerHTML = ''; // Clear existing buttons
+
+                gameState.tiedPlayers.forEach(playerId => {
+                    const teamName = gameState.playerNames?.[playerId] || `Team ${playerId.slice(-1)}`;
+                    const button = document.createElement('button');
+                    button.textContent = `${teamName} Won`;
+                    button.style.cssText = 'font-size: 20px; padding: 15px 40px; background-color: #9C27B0; color: white; margin: 10px; border-radius: 8px; border: none; cursor: pointer;';
+                    button.onclick = () => {
+                        console.log(`Tiebreaker winner: ${playerId}`);
+                        ws.send(JSON.stringify({
+                            type: 'tiebreaker_winner',
+                            playerId: playerId
+                        }));
+                    };
+                    tiebreakerButtonsContainer.appendChild(button);
+                });
+
+                // Hide main action button
+                mainActionBtn.style.display = 'none';
+            } else {
+                // Hide tiebreaker interface when not in tiebreaker phase
+                document.getElementById('tiebreaker-selection').style.display = 'none';
+            }
+
+            // Hide question controls when not in question phase
+            if (gameState.gamePhase === 'WAITING' || gameState.gamePhase === 'PRESHOW_ACTIVE' || gameState.gamePhase === 'READY_FOR_BADGE_SEQUENCE' || gameState.gamePhase === 'READY_TO_SHOW_QUESTION' || gameState.gamePhase === 'READY_TO_REVEAL_WINNER' || gameState.gamePhase === 'TV_AD_READY' || gameState.gamePhase === 'TV_AD_PLAYING' || gameState.gamePhase === 'TIEBREAKER_READY') {
+                document.getElementById('question-controls').style.display = 'none';
+                document.getElementById('buzzer-system').style.display = 'none';
+                document.getElementById('physical-challenge-scoring').style.display = 'none';
+                multipleChoiceRevealed = false;
+
+                // Show main action button when it has a purpose
+                mainActionBtn.style.display = 'inline-block';
+            }
+
+            // When NOT in physical challenge, ensure button is reset for next time
+            if (gameState.gamePhase !== 'PHYSICAL_CHALLENGE') {
+                const doneButton = document.getElementById('physical-challenge-done');
+                if (doneButton && doneButton.disabled) {
+                    console.log('Resetting Done button state outside of physical challenge');
+                    doneButton.disabled = false;
+                    doneButton.textContent = 'Done';
+                }
+            }
+
+            // Hide preshow button after game starts (LIGHTS phase and beyond, except WAITING and PRESHOW_ACTIVE)
+            if (gameState.gamePhase !== 'WAITING' && gameState.gamePhase !== 'PRESHOW_ACTIVE') {
+                preshowMusicBtn.style.display = 'none';
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            connectWebSocket();
+
+            // Game selection buttons
+            document.querySelectorAll('.game-select-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const gameNumber = parseInt(this.getAttribute('data-game'));
+                    console.log('=== GAME SELECTED ===');
+                    console.log('Game number:', gameNumber);
+
+                    // Send game selection to server
+                    ws.send(JSON.stringify({
+                        type: 'select_game',
+                        gameNumber: gameNumber
+                    }));
+
+                    // Visual feedback
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 200);
+                });
+            });
+
+            // Reset Game button - always resets to beginning
+            document.getElementById('reset-game-btn').addEventListener('click', () => {
+                console.log('=== RESET GAME CLICKED ===');
+                // Reset local state
+                multipleChoiceRevealed = false;
+                firstQuestionRevealed = false; // Reset host script visibility
+                lastPhysicalChallengeIndex = -1; // Reset physical challenge tracking
+                physicalChallengeScores = { p1: 0, p2: 0, p3: 0 }; // Reset physical scores
+
+                // Hide all dynamic controls
+                document.getElementById('team-setup').style.display = 'block';
+                document.getElementById('main-action-btn').style.display = 'none';
+                document.getElementById('question-controls').style.display = 'none';
+                // Note: player-scoring element doesn't exist in this version
+
+                // Clear team name inputs
+                document.getElementById('team1-input').value = '';
+                document.getElementById('team2-input').value = '';
+                document.getElementById('team3-input').value = '';
+
+                // Send reset to server
+                ws.send(JSON.stringify({ type: 'reset_game' }));
+
+                console.log('Game reset - ready for new team names');
+            });
+
+            // Emergency End Game button - reveals winner immediately
+            document.getElementById('emergency-end-btn').addEventListener('click', () => {
+                console.log('=== EMERGENCY END GAME CLICKED ===');
+                if (confirm('Are you sure you want to end the game now and reveal the winner?')) {
+                    console.log('Emergency end confirmed - revealing winner');
+                    ws.send(JSON.stringify({ type: 'reveal_winner_final' }));
+                }
+            });
+
+            // Adjust Score button - opens modal
+            document.getElementById('adjust-score-btn').addEventListener('click', () => {
+                console.log('=== ADJUST SCORE CLICKED ===');
+                // Populate modal with current team names and scores
+                document.getElementById('modal-team1-name').textContent = gameState.playerNames?.p1 || 'Team One';
+                document.getElementById('modal-team2-name').textContent = gameState.playerNames?.p2 || 'Team Two';
+                document.getElementById('modal-team3-name').textContent = gameState.playerNames?.p3 || 'Team Three';
+
+                document.getElementById('modal-team1-score').textContent = gameState.scores?.p1 || 0;
+                document.getElementById('modal-team2-score').textContent = gameState.scores?.p2 || 0;
+                document.getElementById('modal-team3-score').textContent = gameState.scores?.p3 || 0;
+
+                // Show modal
+                document.getElementById('score-modal').style.display = 'flex';
+            });
+
+            // Modal +1/-1 buttons for Team 1
+            document.getElementById('modal-add-p1').addEventListener('click', () => {
+                let currentScore = parseInt(document.getElementById('modal-team1-score').textContent);
+                document.getElementById('modal-team1-score').textContent = currentScore + 1;
+            });
+            document.getElementById('modal-sub-p1').addEventListener('click', () => {
+                let currentScore = parseInt(document.getElementById('modal-team1-score').textContent);
+                document.getElementById('modal-team1-score').textContent = Math.max(0, currentScore - 1);
+            });
+
+            // Modal +1/-1 buttons for Team 2
+            document.getElementById('modal-add-p2').addEventListener('click', () => {
+                let currentScore = parseInt(document.getElementById('modal-team2-score').textContent);
+                document.getElementById('modal-team2-score').textContent = currentScore + 1;
+            });
+            document.getElementById('modal-sub-p2').addEventListener('click', () => {
+                let currentScore = parseInt(document.getElementById('modal-team2-score').textContent);
+                document.getElementById('modal-team2-score').textContent = Math.max(0, currentScore - 1);
+            });
+
+            // Modal +1/-1 buttons for Team 3
+            document.getElementById('modal-add-p3').addEventListener('click', () => {
+                let currentScore = parseInt(document.getElementById('modal-team3-score').textContent);
+                document.getElementById('modal-team3-score').textContent = currentScore + 1;
+            });
+            document.getElementById('modal-sub-p3').addEventListener('click', () => {
+                let currentScore = parseInt(document.getElementById('modal-team3-score').textContent);
+                document.getElementById('modal-team3-score').textContent = Math.max(0, currentScore - 1);
+            });
+
+            // Modal Done button - send updated scores to server
+            document.getElementById('modal-done-btn').addEventListener('click', () => {
+                console.log('=== MODAL DONE CLICKED ===');
+                const newScores = {
+                    p1: parseInt(document.getElementById('modal-team1-score').textContent),
+                    p2: parseInt(document.getElementById('modal-team2-score').textContent),
+                    p3: parseInt(document.getElementById('modal-team3-score').textContent)
+                };
+                console.log('Sending updated scores:', newScores);
+
+                // Send to server
+                ws.send(JSON.stringify({
+                    type: 'adjust_scores',
+                    scores: newScores
+                }));
+
+                // Close modal
+                document.getElementById('score-modal').style.display = 'none';
+            });
+
+            // Ready button - sends team names and reveals Start Game
+            document.getElementById('ready-btn').addEventListener('click', () => {
+                const team1Name = document.getElementById('team1-input').value.trim();
+                const team2Name = document.getElementById('team2-input').value.trim();
+                const team3Name = document.getElementById('team3-input').value.trim();
+
+                // Validate that all team names are entered
+                if (!team1Name || !team2Name || !team3Name) {
+                    alert('Please enter all three team names');
+                    return;
+                }
+
+                // Send team names to server
+                ws.send(JSON.stringify({
+                    type: 'set_team_names',
+                    teamNames: {
+                        p1: team1Name,
+                        p2: team2Name,
+                        p3: team3Name
+                    }
+                }));
+
+                // Remove team setup box completely from the DOM so other elements move up
+                const teamSetup = document.getElementById('team-setup');
+                teamSetup.style.opacity = '0'; // Fade out
+
+                // Wait for fade animation, then remove from DOM
+                setTimeout(() => {
+                    teamSetup.remove(); // Completely remove - this makes other elements move up
+                }, 300); // Match the transition duration
+
+                document.getElementById('main-action-btn').style.display = 'inline-block';
+                // Button text will be set by updateControlsVisibility when game state updates
+
+                console.log('Team names set:', { team1Name, team2Name, team3Name });
+            });
+
+            // Preshow Music button
+            document.getElementById('preshow-music-btn').addEventListener('click', () => {
+                console.log('=== PRESHOW MUSIC BUTTON CLICKED ===');
+                ws.send(JSON.stringify({ type: 'start_preshow' }));
+            });
+
+            // Main action button (handles different states)
+            document.getElementById('main-action-btn').addEventListener('click', () => {
+                console.log('=== MAIN ACTION BUTTON CLICKED ===');
+                console.log('Current game state before clicking:', gameState);
+                console.log('Current game phase:', gameState.gamePhase);
+
+                // Hide host script when "Choose Question" is clicked for the first time
+                if (gameState.gamePhase === 'READY_FOR_BADGE_SEQUENCE' && !firstQuestionRevealed) {
+                    firstQuestionRevealed = true;
+                    const hostScriptSection = document.getElementById('host-script-section');
+                    if (hostScriptSection) {
+                        hostScriptSection.style.display = 'none';
+                    }
+                }
+
+                // Handle different button states
+                if (gameState.gamePhase === 'ANSWER_SHOWN') {
+                    // Button shows "Done" - advance to next round
+                    console.log('Done button clicked - advancing to next round');
+                    ws.send(JSON.stringify({ type: 'question_done' }));
+                } else if (gameState.gamePhase === 'READY_TO_REVEAL_WINNER') {
+                    // Button shows "Reveal Winner" - show final winner
+                    console.log('Reveal Winner button clicked - showing final winner');
+                    ws.send(JSON.stringify({ type: 'reveal_winner_final' }));
+                } else if (gameState.gamePhase === 'WINNER_REVEALED') {
+                    // Button shows "Play Outro" - play closing theme again
+                    console.log('Play Outro button clicked - playing closing theme again');
+                    ws.send(JSON.stringify({ type: 'play_outro' }));
+                } else if (gameState.gamePhase === 'TV_AD_READY') {
+                    // Button shows "TV Ad" - start the TV ad
+                    console.log('TV Ad button clicked - rolling in cart and playing video');
+                    ws.send(JSON.stringify({ type: 'tv_ad_start' }));
+                } else if (gameState.gamePhase === 'TV_AD_PLAYING') {
+                    // Button shows "End Ad" - end the TV ad
+                    console.log('End Ad button clicked - rolling out cart and continuing game');
+                    ws.send(JSON.stringify({ type: 'tv_ad_end' }));
+                } else {
+                    // All other states use advance_game
+                    ws.send(JSON.stringify({ type: 'advance_game' }));
+                }
+            });
+
+            // Wrong button - just plays sound effect
+            document.getElementById('wrong-btn').addEventListener('click', () => {
+                console.log('Wrong button clicked - playing wrong.mp3');
+                const wrongAudio = document.getElementById('wrong-audio');
+                if (wrongAudio) {
+                    wrongAudio.currentTime = 0; // Reset to beginning
+                    wrongAudio.volume = 0.55; // Normalized volume
+                    wrongAudio.play().then(() => {
+                        console.log('❌ Wrong sound played');
+                    }).catch(error => {
+                        console.error('Error playing wrong sound:', error);
+                    });
+                }
+            });
+
+            // Timer button - plays timer.mp3 for physical challenges
+            document.getElementById('timer-btn').addEventListener('click', () => {
+                console.log('Timer button clicked - playing timer.mp3');
+                const timerAudio = document.getElementById('timer-audio');
+                if (timerAudio) {
+                    timerAudio.currentTime = 0; // Reset to beginning
+                    timerAudio.volume = 0.55; // Normalized volume
+                    timerAudio.play().then(() => {
+                        console.log('⏱️ Timer sound played');
+                    }).catch(error => {
+                        console.error('Error playing timer sound:', error);
+                    });
+                }
+            });
+
+            // Multiple Choice button
+            document.getElementById('multiple-choice-btn').addEventListener('click', () => {
+                console.log('=== MULTIPLE CHOICE BUTTON CLICKED ===');
+                console.log('Current game state:', gameState);
+                console.log('Current question index:', gameState.currentQuestionIndex);
+                console.log('Sending show_multiple_choice message');
+
+                multipleChoiceRevealed = true;
+
+                // Hide the multiple choice button after it's clicked
+                document.getElementById('multiple-choice-btn').style.display = 'none';
+
+                // Update points to award display if someone has buzzed in
+                if (gameState.activePlayer) {
+                    document.getElementById('points-to-award').textContent = '1';
+                }
+
+                // Update the notes panel to show multiple choice options
+                if (gameState.currentQuestion) {
+                    const showAnswer = gameState.gamePhase === 'QUESTION_SHOWN' ||
+                                     gameState.gamePhase === 'MULTIPLE_CHOICE_SHOWN' ||
+                                     gameState.gamePhase === 'ANSWER_SHOWN' ||
+                                     gameState.gamePhase === 'PHYSICAL_CHALLENGE';
+
+                    updateQuestionAnswerDisplay(
+                        gameState.currentQuestion.question,
+                        gameState.currentQuestion.answer,
+                        showAnswer,
+                        gameState.currentQuestion.multipleChoice,
+                        true // Now show multiple choice
+                    );
+                }
+
+                ws.send(JSON.stringify({ type: 'show_multiple_choice' }));
+
+                console.log('Multiple choice message sent');
+            });
+
+            // Correct button - player answered correctly
+            document.getElementById('correct-btn').addEventListener('click', function() {
+                const playerId = this.dataset.playerId;
+                console.log('=== CORRECT BUTTON CLICKED ===');
+                console.log('Player ID:', playerId);
+                console.log('Multiple choice revealed:', multipleChoiceRevealed);
+
+                // Send ruling to server
+                ws.send(JSON.stringify({
+                    type: 'ruling',
+                    result: 'correct'
+                }));
+            });
+
+            // Incorrect button - player answered incorrectly
+            document.getElementById('incorrect-btn').addEventListener('click', function() {
+                const playerId = this.dataset.playerId;
+                console.log('=== INCORRECT BUTTON CLICKED ===');
+                console.log('Player ID:', playerId);
+
+                // Send ruling to server
+                ws.send(JSON.stringify({
+                    type: 'ruling',
+                    result: 'incorrect'
+                }));
+            });
+
+            // Physical Challenge +/- buttons
+            document.getElementById('add-point-p1').addEventListener('click', () => {
+                physicalChallengeScores.p1++;
+                document.getElementById('physical-score-p1').textContent = physicalChallengeScores.p1;
+            });
+
+            document.getElementById('remove-point-p1').addEventListener('click', () => {
+                if (physicalChallengeScores.p1 > 0) {
+                    physicalChallengeScores.p1--;
+                    document.getElementById('physical-score-p1').textContent = physicalChallengeScores.p1;
+                }
+            });
+
+            document.getElementById('add-point-p2').addEventListener('click', () => {
+                physicalChallengeScores.p2++;
+                document.getElementById('physical-score-p2').textContent = physicalChallengeScores.p2;
+            });
+
+            document.getElementById('remove-point-p2').addEventListener('click', () => {
+                if (physicalChallengeScores.p2 > 0) {
+                    physicalChallengeScores.p2--;
+                    document.getElementById('physical-score-p2').textContent = physicalChallengeScores.p2;
+                }
+            });
+
+            document.getElementById('add-point-p3').addEventListener('click', () => {
+                physicalChallengeScores.p3++;
+                document.getElementById('physical-score-p3').textContent = physicalChallengeScores.p3;
+            });
+
+            document.getElementById('remove-point-p3').addEventListener('click', () => {
+                if (physicalChallengeScores.p3 > 0) {
+                    physicalChallengeScores.p3--;
+                    document.getElementById('physical-score-p3').textContent = physicalChallengeScores.p3;
+                }
+            });
+
+            // Physical Challenge Done button
+            document.getElementById('physical-challenge-done').addEventListener('click', () => {
+                console.log('=== PHYSICAL CHALLENGE DONE CLICKED ===');
+                console.log('Final physical challenge scores:', physicalChallengeScores);
+
+                // Disable button immediately to prevent multiple clicks
+                const doneButton = document.getElementById('physical-challenge-done');
+                doneButton.disabled = true;
+                doneButton.textContent = 'Processing...';
+
+                // Send the accumulated scores to server
+                ws.send(JSON.stringify({
+                    type: 'physical_challenge_complete_solo',
+                    scores: physicalChallengeScores
+                }));
+            });
+        });
+    </script>

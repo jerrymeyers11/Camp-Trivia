@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Jeopardy - Gameboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .game-canvas {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 177.78vh; /* 16:9 aspect ratio constraint */
+            max-height: 56.25vw;  /* 16:9 aspect ratio constraint */
+            background: #1a5c3a; /* Fallback forest green */
+            overflow: hidden;
+            /* Enable container queries for responsive text sizing */
+            container-type: size;
+            container-name: game-canvas;
+        }
+
+        .background-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('background-camp.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 1;
+        }
+
+        .gameboard-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+        }
+
+        .gameboard-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .merit-badges-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Running lights layers */
+        .lights-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .lights-layer img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .lights-2 { z-index: 15; opacity: 0; } /* gameboardlights_2.png - top layer - hidden by default */
+        .lights-1 { z-index: 14; opacity: 0; } /* gameboardlights_1.png - middle layer - hidden by default */
+        .lights-base { z-index: 13; opacity: 1; } /* gameboardlights.png - bottom layer - always visible */
+
+        /* Scoreboard containers */
+        .scoreboard-container {
+            position: absolute;
+            width: 17.73%; /* 681px / 3840px = 17.73% of canvas width */
+            height: 13.10%; /* 283px / 2160px = 13.10% of canvas height */
+            z-index: 25; /* Above all other elements */
+            transition: transform 1s ease-in-out;
+            transform: translateY(100vh); /* Start off-screen below */
+        }
+
+        .scoreboard-container.slide-in {
+            transform: translateY(0); /* Final position */
+        }
+
+        .scoreboard-1 { top: 87.04%; left: 4.11%; } /* 1880/2160, 158/3840 */
+        .scoreboard-2 { top: 87.04%; left: 41.43%; } /* 1880/2160, 1591/3840 */
+        .scoreboard-3 { top: 87.04%; left: 78.05%; } /* 1880/2160, 2997/3840 */
+
+        /* Score card PNGs within containers */
+        .score-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        /* Load custom font */
+        @font-face {
+            font-family: 'F37Judge-Bold';
+            src: url('F37Judge-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        /* Dynamic text overlays for team names and scores */
+        .team-text {
+            position: absolute;
+            color: #fff;
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            font-weight: bold;
+            z-index: 30; /* Above score card PNGs */
+            text-align: center;
+        }
+
+        .team-name {
+            font-size: 3.5cqh; /* Container query height units - scales with game-canvas */
+            text-align: center;
+        }
+
+        .team-score {
+            font-size: 5cqh; /* Container query height units - scales with game-canvas */
+            text-align: center;
+        }
+
+        /* Team text positioning within scoreboard containers */
+        .team-one-name {
+            top: 32%; /* Relative to scoreboard container */
+            left: 34%; /* Center horizontally */
+            transform: translateX(-50%); /* Perfect centering */
+        }
+        .team-one-score {
+            top: 26%; /* Relative to scoreboard container */
+            left: 77%; /* Center horizontally */
+            transform: translateX(-50%); /* Perfect centering */
+        }
+
+        .team-two-name {
+            top: 32%; /* Relative to scoreboard container */
+            left: 34%; /* Center horizontally */
+            transform: translateX(-50%); /* Perfect centering */
+        }
+        .team-two-score {
+            top: 26%; /* Relative to scoreboard container */
+            left: 77%; /* Center horizontally */
+            transform: translateX(-50%); /* Perfect centering */
+        }
+
+        .team-three-name {
+            top: 32%; /* Relative to scoreboard container */
+            left: 34%; /* Center horizontally */
+            transform: translateX(-50%); /* Perfect centering */
+        }
+        .team-three-score {
+            top: 26%; /* Relative to scoreboard container */
+            left: 77%; /* Center horizontally */
+            transform: translateX(-50%); /* Perfect centering */
+        }
+
+        /* Running lights animation */
+        .lights-flashing .lights-1 {
+            animation: flash-1 0.4s infinite;
+        }
+        
+        .lights-flashing .lights-2 {
+            animation: flash-2 0.4s infinite;
+        }
+
+        @keyframes flash-1 {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes flash-2 {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .merit-badge {
+            position: absolute;
+            width: 9.11%; /* 350px / 3840px = 9.11% of canvas width */
+            height: 16.20%; /* 350px / 2160px = 16.20% of canvas height */
+            transition: opacity 0.3s ease;
+            filter: drop-shadow(0.2% 0.2% 0.4% rgba(0, 0, 0, 0.3));
+        }
+
+        /* Badge lights - highlights behind merit badges */
+        .badge-light {
+            position: absolute;
+            width: 14.32%; /* 550px / 3840px = 14.32% of canvas width */
+            height: 25.46%; /* 550px / 2160px = 25.46% of canvas height */
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.1s ease;
+            z-index: 9; /* Behind merit badges (which are z-index 10) */
+        }
+
+        /* Active badge light state */
+        .badge-light.active {
+            opacity: 1;
+        }
+
+        /* Dim overlay for question focus */
+        .dim-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); /* 80% black overlay */
+            z-index: 35; /* Above background but below question plank */
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        .dim-overlay.active {
+            opacity: 1;
+        }
+
+        /* Wooden plank question/answer system */
+        .question-plank-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 40; /* Above everything else when active */
+            pointer-events: none;
+        }
+
+        .question-plank {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%; /* Full canvas width to match PNG */
+            height: 202.78%; /* 4380px / 2160px = 202.78% of canvas height */
+            transition: top 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* 20% faster with bounce */
+            top: 100%; /* Start completely below screen */
+        }
+
+        .plank-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Text positioning on the wooden plank */
+        .question-text, .multiple-choice-text, .answer-text {
+            position: absolute;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+            color: #ffffff;
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.3), -1px -1px 1px rgba(0,0,0,0.3);
+            line-height: 1.2;
+        }
+
+        /* Question positioning - center at 1920x1400 on 4380px height */
+        .question-text {
+            top: 30%; /* Vertical center position */
+            left: 50%;
+            width: 72.92%; /* 2800/3840 = 72.92% */
+            font-size: 10cqh; /* Container query height units - scales with game-canvas */
+            transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+        }
+
+        /* Multiple Choice positioning - center at 1920x2500 on 4380px height */
+        .multiple-choice-text {
+            top: 57.08%; /* 2500/4380 = 57.08% */
+            width: 80%; /* Wider for horizontal options */
+            font-size: 7.5cqh; /* Container query height units - scales with game-canvas */
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.3s ease-in-out; /* Smooth fade in/out */
+        }
+
+        /* Answer positioning - center at 1920x3855 on 4380px height */
+        .answer-text {
+            top: 88.01%; /* 3855/4380 = 88.01% */
+            width: 54.69%; /* 2100/3840 = 54.69% */
+            font-size: 8.5cqh; /* Container query height units - scales with game-canvas */
+        }
+
+        /* Animation states */
+        .question-plank.show-question {
+            top: -5.06%; /* Position to center question at 31.96% of plank height */
+        }
+
+        .question-plank.show-multiple-choice {
+            top: -40.08%; /* Position to center multiple choice at 57.08% of plank height */
+        }
+
+        .question-plank.show-answer {
+            top: -125.01%; /* Position to center answer at 88.01% of plank height */
+        }
+
+        /* Physical Challenge Plank Styles */
+        .physical-plank-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 45; /* Above regular plank system */
+            pointer-events: none;
+            display: none; /* Hidden by default */
+        }
+
+        .physical-plank {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%; /* Full container width */
+            height: 100%; /* Full container height */
+            transition: top 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* Same bounce animation as regular plank */
+            top: 100%; /* Start completely below screen */
+        }
+
+        .physical-plank-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Maintain aspect ratio within container bounds */
+        }
+
+        .physical-badge-container {
+            position: absolute;
+            top: 60%; /* Temporary positioning - will fine-tune */
+            left: 30%; /* Left aligned on wood */
+            transform: translate(-50%, -50%);
+            width: 40%; /* Merit badge size */
+            height: 40%;
+        }
+
+        .physical-challenge-text {
+            position: absolute;
+            top: 59%; /* Temporary positioning - will fine-tune */
+            right: 20%; /* Right aligned */
+            transform: translateY(-50%);
+            color: #ffffff;
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            font-weight: bold;
+            font-size: 15cqh; /* Container query height units - scales with game-canvas */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Physical plank animation states */
+        .physical-plank.show-physical-challenge {
+            top: 0; /* Final position at top of screen */
+        }
+
+        /* Winner Display System Styles */
+        .winner-display-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50; /* Above all other elements */
+            pointer-events: none;
+            display: none; /* Hidden by default */
+        }
+
+        .winner-display {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%; /* Full container width */
+            height: 100%; /* Full container height */
+            transition: top 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* Same bounce animation */
+            top: 100%; /* Start completely below screen */
+        }
+
+        .winner-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 1;
+        }
+
+        .winner-lights {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 2;
+            opacity: 0; /* Hidden by default */
+        }
+
+        .winner-text {
+            position: absolute;
+            top: 61%; /* Adjust positioning as needed */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 3;
+        }
+
+        .winner-name {
+            font-size: 13cqh; /* Container query height units - scales with game-canvas */
+            color: #74d47b;
+            margin-bottom: 0.2em;
+            line-height: 1.1;
+        }
+
+        .winner-score {
+            font-size: 9cqh; /* Container query height units - scales with game-canvas */
+            margin-top: 0.1em;
+            line-height: 1.2;
+        }
+
+        /* Winner display animation states */
+        .winner-display.show-winner {
+            top: 0; /* Final position at top of screen */
+        }
+
+        /* Winner lights flashing animation */
+        .winner-lights-flashing #winner-lights-1 {
+            animation: flash-1 0.4s infinite;
+        }
+
+        .winner-lights-flashing #winner-lights-2 {
+            animation: flash-2 0.4s infinite;
+        }
+
+        /* Merit badge positions - converted from 4K coordinates to percentages */
+        .merit-badge-1 { top: 25.88%; left: 19.71%; } /* 559/2160, 757/3840 */
+        .merit-badge-2 { top: 25.88%; left: 37.11%; } /* 559/2160, 1425/3840 */
+        .merit-badge-3 { top: 25.88%; left: 54.51%; } /* 559/2160, 2093/3840 */
+        .merit-badge-4 { top: 25.88%; left: 71.77%; } /* 559/2160, 2756/3840 */
+
+        .merit-badge-5 { top: 45.79%; left: 19.71%; } /* 989/2160, 757/3840 */
+        .merit-badge-6 { top: 45.79%; left: 37.11%; } /* 989/2160, 1425/3840 */
+        .merit-badge-7 { top: 45.79%; left: 54.51%; } /* 989/2160, 2093/3840 */
+        .merit-badge-8 { top: 45.79%; left: 71.77%; } /* 989/2160, 2756/3840 */
+
+        .merit-badge-9 { top: 64.86%; left: 19.71%; } /* 1401/2160, 757/3840 */
+        .merit-badge-10 { top: 64.86%; left: 37.11%; } /* 1401/2160, 1425/3840 */
+        .merit-badge-11 { top: 64.86%; left: 54.51%; } /* 1401/2160, 2093/3840 */
+        .merit-badge-12 { top: 64.86%; left: 71.77%; } /* 1401/2160, 2756/3840 */
+
+        /* Badge light positions - 100px offset from merit badges (657x459 vs 757x559) */
+        .badge-light-1 { top: 21.25%; left: 17.11%; } /* 459/2160, 657/3840 */
+        .badge-light-2 { top: 21.25%; left: 34.51%; } /* 459/2160, 1325/3840 */
+        .badge-light-3 { top: 21.25%; left: 51.91%; } /* 459/2160, 1993/3840 */
+        .badge-light-4 { top: 21.25%; left: 69.17%; } /* 459/2160, 2656/3840 */
+
+        .badge-light-5 { top: 41.16%; left: 17.11%; } /* 889/2160, 657/3840 */
+        .badge-light-6 { top: 41.16%; left: 34.51%; } /* 889/2160, 1325/3840 */
+        .badge-light-7 { top: 41.16%; left: 51.91%; } /* 889/2160, 1993/3840 */
+        .badge-light-8 { top: 41.16%; left: 69.17%; } /* 889/2160, 2656/3840 */
+
+        .badge-light-9 { top: 60.23%; left: 17.11%; } /* 1301/2160, 657/3840 */
+        .badge-light-10 { top: 60.23%; left: 34.51%; } /* 1301/2160, 1325/3840 */
+        .badge-light-11 { top: 60.23%; left: 51.91%; } /* 1301/2160, 1993/3840 */
+        .badge-light-12 { top: 60.23%; left: 69.17%; } /* 1301/2160, 2656/3840 */
+
+        /* State modifiers for merit badges */
+        .merit-badge.answered {
+            opacity: 0.3;
+        }
+
+        .content-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+
+
+        /* Placeholder for future game elements */
+        .game-elements {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            height: 40%;
+            z-index: 15;
+            /* This will hold question grid, buzzer states, etc. */
+        }
+
+        /* TV Cart Container - holds both cart and video together */
+        .tv-cart-container {
+            position: absolute;
+            top: 0;
+            left: -10.10%; /* Final position: -388px / 3840px = -10.10% of canvas width */
+            width: 118.75%; /* 4564px / 3840px = 118.75% of canvas width */
+            height: 100%; /* 2160px / 2160px = 100% of canvas height */
+            z-index: 45; /* Above plank container but high enough to be visible */
+            transition: transform 2.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Use transform for smooth animation */
+            transform: translateX(110.10%); /* Move off-screen: 100% + 10.10% = 110.10% to get completely off-screen */
+        }
+
+        .tv-cart-container.roll-in {
+            transform: translateX(0); /* Final position: no transform = normal position */
+        }
+
+        /* TV Cart PNG - positioned within container */
+        .tv-cart-layer {
+            position: absolute;
+            top: 0;
+            left: 0; /* Positioned relative to container */
+            width: 100%; /* Full width of container */
+            height: 100%; /* Full height of container */
+            z-index: 2; /* Above video within container */
+        }
+
+        .tv-cart-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* TV Screen Video - positioned within container, behind cart */
+        .tv-screen-video {
+            position: absolute;
+            top: 14.53%; /* 344px / 2160px = 14.53% of canvas height */
+            left: 24.13%; /* Relative to cart: (756px + 388px) / 4564px = 25.08% within cart container */
+            width: 47.52%; /* Relative to cart: 2167px / 4564px = 47.52% of cart width */
+            height: 56.46%; /* 1219px / 2160px = 56.46% of canvas height */
+            z-index: 1; /* Behind cart within container */
+        }
+
+        .tv-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Start Button Overlay - for initializing audio */
+        .start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85); /* Darker than question dim */
+            z-index: 200; /* Above everything */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .start-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Audio enable overlay - entire screen clickable */
+        .start-overlay {
+            cursor: pointer;
+        }
+
+        .start-overlay:hover .start-message {
+            transform: scale(1.05);
+        }
+
+        .start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            font-size: 3em; /* Relative to container */
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2em 3em;
+            border-radius: 20px;
+            border: 4px solid #4CAF50;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            pointer-events: none; /* Let clicks pass through to overlay */
+        }
+
+        .start-icon {
+            font-size: 1.67em; /* 5em total when combined with parent */
+            display: block;
+            margin-bottom: 0.4em;
+        }
+
+        .start-subtitle {
+            position: absolute;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-family: 'F37Judge-Bold', Arial, sans-serif;
+            font-size: 1.5em; /* Relative to container */
+            text-align: center;
+            opacity: 0.8;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5em 1em;
+            border-radius: 10px;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="game-canvas">
+        <!-- Background layer - your camp image will go here -->
+        <div class="background-layer"></div>
+        
+        <!-- Gameboard layer - camp welcome sign -->
+        <div class="gameboard-layer">
+            <img src="gameboard.png" alt="Camp Welcome Sign" class="gameboard-image">
+        </div>
+        
+        <!-- Badge lights layer (behind merit badges) -->
+        <div class="badge-lights-layer">
+            <img src="badgelight.png" alt="Badge Light 1" class="badge-light badge-light-1" id="badge-light-1">
+            <img src="badgelight.png" alt="Badge Light 2" class="badge-light badge-light-2" id="badge-light-2">
+            <img src="badgelight.png" alt="Badge Light 3" class="badge-light badge-light-3" id="badge-light-3">
+            <img src="badgelight.png" alt="Badge Light 4" class="badge-light badge-light-4" id="badge-light-4">
+            <img src="badgelight.png" alt="Badge Light 5" class="badge-light badge-light-5" id="badge-light-5">
+            <img src="badgelight.png" alt="Badge Light 6" class="badge-light badge-light-6" id="badge-light-6">
+            <img src="badgelight.png" alt="Badge Light 7" class="badge-light badge-light-7" id="badge-light-7">
+            <img src="badgelight.png" alt="Badge Light 8" class="badge-light badge-light-8" id="badge-light-8">
+            <img src="badgelight.png" alt="Badge Light 9" class="badge-light badge-light-9" id="badge-light-9">
+            <img src="badgelight.png" alt="Badge Light 10" class="badge-light badge-light-10" id="badge-light-10">
+            <img src="badgelight.png" alt="Badge Light 11" class="badge-light badge-light-11" id="badge-light-11">
+            <img src="badgelight.png" alt="Badge Light 12" class="badge-light badge-light-12" id="badge-light-12">
+        </div>
+        
+        <!-- Merit badges layer -->
+        <div class="merit-badges-layer">
+            <img src="merit_1.png" alt="Merit Badge 1" class="merit-badge merit-badge-1" id="merit-1">
+            <img src="merit_2.png" alt="Merit Badge 2" class="merit-badge merit-badge-2" id="merit-2">
+            <img src="merit_3.png" alt="Merit Badge 3" class="merit-badge merit-badge-3" id="merit-3">
+            <img src="merit_4.png" alt="Merit Badge 4" class="merit-badge merit-badge-4" id="merit-4">
+            <img src="merit_5.png" alt="Merit Badge 5" class="merit-badge merit-badge-5" id="merit-5">
+            <img src="merit_6.png" alt="Merit Badge 6" class="merit-badge merit-badge-6" id="merit-6">
+            <img src="merit_7.png" alt="Merit Badge 7" class="merit-badge merit-badge-7" id="merit-7">
+            <img src="merit_8.png" alt="Merit Badge 8" class="merit-badge merit-badge-8" id="merit-8">
+            <img src="merit_9.png" alt="Merit Badge 9" class="merit-badge merit-badge-9" id="merit-9">
+            <img src="merit_10.png" alt="Merit Badge 10" class="merit-badge merit-badge-10" id="merit-10">
+            <img src="merit_11.png" alt="Merit Badge 11" class="merit-badge merit-badge-11" id="merit-11">
+            <img src="merit_12.png" alt="Merit Badge 12" class="merit-badge merit-badge-12" id="merit-12">
+        </div>
+        
+        <!-- Running lights layers (bottom to top) -->
+        <div id="running-lights-container">
+            <div class="lights-layer lights-base">
+                <img src="gameboardlights.png" alt="Running Lights Base" id="lights-base">
+            </div>
+            <div class="lights-layer lights-1">
+                <img src="gameboardlights_1.png" alt="Running Lights 1" id="lights-1">
+            </div>
+            <div class="lights-layer lights-2">
+                <img src="gameboardlights_2.png" alt="Running Lights 2" id="lights-2">
+            </div>
+        </div>
+        
+        <!-- Scoreboard containers -->
+        <div class="scoreboards-layer">
+            <!-- Team One Scoreboard -->
+            <div class="scoreboard-container scoreboard-1" id="scoreboard-1">
+                <img src="Score.png" alt="Score Card 1" class="score-card" id="score-card-1">
+                <div class="team-text team-name team-one-name" id="team-one-name">TEAM ONE</div>
+                <div class="team-text team-score team-one-score" id="team-one-score"><span id="p1-amount">0</span></div>
+            </div>
+
+            <!-- Team Two Scoreboard -->
+            <div class="scoreboard-container scoreboard-2" id="scoreboard-2">
+                <img src="Score.png" alt="Score Card 2" class="score-card" id="score-card-2">
+                <div class="team-text team-name team-two-name" id="team-two-name">TEAM TWO</div>
+                <div class="team-text team-score team-two-score" id="team-two-score"><span id="p2-amount">0</span></div>
+            </div>
+
+            <!-- Team Three Scoreboard -->
+            <div class="scoreboard-container scoreboard-3" id="scoreboard-3">
+                <img src="Score.png" alt="Score Card 3" class="score-card" id="score-card-3">
+                <div class="team-text team-name team-three-name" id="team-three-name">TEAM THREE</div>
+                <div class="team-text team-score team-three-score" id="team-three-score"><span id="p3-amount">0</span></div>
+            </div>
+        </div>
+        
+        <!-- TV Cart Container - holds both cart and video -->
+        <div class="tv-cart-container" id="tv-cart-container">
+            <!-- TV Screen Video - behind the cart -->
+            <div class="tv-screen-video" id="tv-screen-video">
+                <video class="tv-video" id="tv-video" preload="auto">
+                    <source src="netapp.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <!-- TV Cart PNG - on top of video -->
+            <div class="tv-cart-layer" id="tv-cart">
+                <img src="tv_cart.png" alt="TV Cart" class="tv-cart-image">
+            </div>
+        </div>
+
+        <!-- Dim overlay for question focus -->
+        <div class="dim-overlay" id="dim-overlay"></div>
+        
+        <!-- Wooden plank question/answer system -->
+        <div class="question-plank-container" id="question-plank-container">
+            <div class="question-plank" id="question-plank-1">
+                <img src="qnaplank.png" alt="Wooden Question Plank" class="plank-image">
+                <div class="question-text" id="question-text-1">
+                    What's the only enterprise<br>
+                    file storage service native<br>
+                    to Azure and based on ONTAP?
+                </div>
+                <div class="multiple-choice-text" id="multiple-choice-text-1">
+                    A) Option 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;B) Option 2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C) Option 3
+                </div>
+                <div class="answer-text" id="answer-text-1">
+                    Azure NetApp Files
+                </div>
+            </div>
+            <div class="question-plank" id="question-plank-2">
+                <img src="qnaplank.png" alt="Wooden Question Plank" class="plank-image">
+                <div class="question-text" id="question-text-2">
+                    What is the name of the new<br>
+                    entry level converged solution<br>
+                    focused on inferencing?
+                </div>
+                <div class="multiple-choice-text" id="multiple-choice-text-2">
+                    A) Option 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;B) Option 2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C) Option 3
+                </div>
+                <div class="answer-text" id="answer-text-2">
+                    AIPod Mini
+                </div>
+            </div>
+        </div>
+
+        <!-- Physical Challenge Plank -->
+        <div class="physical-plank-container" id="physical-plank-container">
+            <div class="physical-plank" id="physical-plank">
+                <img src="physical.png" alt="Physical Challenge Plank" class="physical-plank-image">
+                <div class="physical-badge-container" id="physical-badge-container">
+                    <!-- Merit badge will be positioned here -->
+                </div>
+                <div class="physical-challenge-text" id="physical-challenge-text">
+                    Physical<br>Challenge
+                </div>
+            </div>
+        </div>
+
+        <!-- Winner Display System -->
+        <div class="winner-display-container" id="winner-display-container">
+            <div class="winner-display" id="winner-display">
+                <img src="winner.png" alt="Winner Background" class="winner-background">
+                <img src="winner_lights_1.png" alt="Winner Lights 1" class="winner-lights" id="winner-lights-1">
+                <img src="winner_lights_2.png" alt="Winner Lights 2" class="winner-lights" id="winner-lights-2">
+                <div class="winner-text" id="winner-text">
+                    Winner Text Goes Here
+                </div>
+            </div>
+        </div>
+
+        <!-- Content layer for all game elements -->
+        <div class="content-layer">
+            
+
+
+            <!-- Game elements container (questions, animations, etc.) -->
+            <div class="game-elements">
+                <!-- Future game elements will be layered here -->
+            </div>
+
+        </div>
+
+        <!-- Audio Enable Overlay - entire screen clickable -->
+        <div class="start-overlay" id="start-overlay">
+            <div class="start-message">
+                <span class="start-icon">🔊</span>
+                Click Anywhere to Enable Audio
+            </div>
+            <div class="start-subtitle">Click anywhere on the screen to initialize audio</div>
+        </div>
+
+
+        <!-- Audio elements for sound effects -->
+        <audio id="woosh-audio" preload="auto">
+            <source src="woosh_13.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="woosh-exit-audio" preload="auto">
+            <source src="woosh_11.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="cartwheel-audio" preload="auto">
+            <source src="cartwheel.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="selected-audio" preload="auto">
+            <source src="selected.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="correct-audio" preload="auto">
+            <source src="correct.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="opening-theme-audio" preload="auto">
+            <source src="openingtheme.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="closing-theme-audio" preload="auto">
+            <source src="closingtheme.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="preshow-music-audio" preload="auto">
+            <source src="preshow.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="wrong-audio" preload="auto">
+            <source src="wrong.mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <script>
+        // WebSocket connection for real-time updates
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = protocol + '//' + window.location.host;
+        const ws = new WebSocket(host);
+
+        // Game state
+        let gameState = {};
+        let badgePrefix = ''; // Will be set when game is selected (g1_, g2_, g3_, or g4_)
+
+        // Function to update all merit badge images with the current badge prefix
+        function updateMeritBadgeImages() {
+            console.log('Updating merit badge images with prefix:', badgePrefix);
+            for (let i = 1; i <= 12; i++) {
+                const badgeImg = document.getElementById(`merit-${i}`);
+                if (badgeImg) {
+                    badgeImg.src = `${badgePrefix}merit_${i}.png`;
+                }
+            }
+        }
+
+        // WebSocket handlers
+        ws.onopen = () => {
+            console.log('Gameboard connected');
+            ws.send(JSON.stringify({ type: 'identify', role: 'gameboard' }));
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Gameboard received:', data);
+
+            switch (data.type) {
+                case 'game_selected':
+                    console.log('Game selected:', data.gameNumber);
+                    badgePrefix = data.badgePrefix;
+                    updateMeritBadgeImages();
+                    break;
+                case 'game_state':
+                    gameState = data.state;
+                    // Update badge prefix if it's in the game state
+                    if (data.state.badgePrefix && data.state.badgePrefix !== badgePrefix) {
+                        badgePrefix = data.state.badgePrefix;
+                        updateMeritBadgeImages();
+                    }
+                    updateDisplay();
+                    break;
+                case 'question_selected':
+                    gameState.currentQuestion = data.questionId;
+                    showQuestion(data.questionId);
+                    break;
+                case 'buzzer_winner':
+                    gameState.activePlayer = data.playerId;
+                    showBuzzerWinner(data.playerId);
+                    playBingSound(); // Play bing sound when player buzzes in
+                    break;
+                case 'update_scores':
+                    gameState.scores = data.scores;
+                    updateScores();
+                    break;
+                case 'correct_answer':
+                    console.log('Received correct_answer message - playing correct sound');
+                    gameState.scores = data.scores;
+                    updateScores();
+                    playCorrectSound();
+                    break;
+                case 'next_question':
+                    resetToWaiting();
+                    break;
+                case 'trigger_lights':
+                    console.log('Received trigger_lights message');
+                    playOpeningTheme();
+                    triggerLightsAnimation();
+                    break;
+                case 'trigger_preshow_lights':
+                    console.log('Received trigger_preshow_lights message');
+                    triggerPreshowLightsAnimation();
+                    break;
+                case 'play_preshow_music':
+                    console.log('Received play_preshow_music message');
+                    playPreshowMusic();
+                    break;
+                case 'stop_preshow_music':
+                    console.log('Received stop_preshow_music message');
+                    stopPreshowMusic();
+                    break;
+                case 'trigger_badge_sequence':
+                    console.log('Received trigger_badge_sequence message');
+                    triggerBadgeSequence(data.targetBadge, data.usedBadges);
+                    break;
+                case 'trigger_badge_sequence_2':
+                    console.log('Received trigger_badge_sequence_2 message');
+                    triggerBadgeSequence2();
+                    break;
+                case 'show_question':
+                    console.log('Received show_question message');
+                    showQuestion(data.questionData);
+                    break;
+                case 'show_physical_challenge':
+                    console.log('Received show_physical_challenge message');
+                    showPhysicalChallenge(data.questionData);
+                    break;
+                case 'show_tiebreaker':
+                    console.log('Received show_tiebreaker message');
+                    showTiebreaker();
+                    break;
+                case 'tiebreaker_complete':
+                    console.log('Received tiebreaker_complete message');
+                    hideTiebreakerAndShowWinner(data.winner, data.score);
+                    break;
+                case 'show_multiple_choice':
+                    console.log('Received show_multiple_choice message');
+                    showMultipleChoice(data.questionData);
+                    break;
+                case 'show_answer':
+                    console.log('Received show_answer message');
+                    showAnswer(data.questionData);
+                    break;
+                case 'hide_plank':
+                    console.log('Received hide_plank message');
+                    hidePlank();
+                    break;
+                case 'show_winner':
+                    console.log('Received show_winner message');
+                    playClosingTheme();
+                    showWinner(data.winner, data.score);
+                    break;
+                case 'test_question_position':
+                    console.log('Testing question position');
+                    const plank = document.querySelector('.question-plank');
+                    plank.className = 'question-plank show-question';
+                    document.getElementById('dim-overlay').classList.add('active');
+                    break;
+                case 'test_multiple_choice_position':
+                    console.log('Testing multiple choice position');
+                    const plankMC = document.querySelector('.question-plank');
+                    plankMC.className = 'question-plank show-multiple-choice';
+                    document.getElementById('dim-overlay').classList.add('active');
+                    break;
+                case 'test_answer_position':
+                    console.log('Testing answer position');
+                    const plankA = document.querySelector('.question-plank');
+                    plankA.className = 'question-plank show-answer';
+                    document.getElementById('dim-overlay').classList.add('active');
+                    break;
+                case 'roll_in_tv_cart':
+                    console.log('Rolling in TV cart');
+                    rollInTvCart();
+                    break;
+                case 'roll_out_tv_cart':
+                    console.log('Rolling out TV cart');
+                    rollOutTvCart();
+                    break;
+                case 'play_outro':
+                    console.log('Playing outro - closing theme again');
+                    playClosingTheme();
+                    break;
+                case 'play_wrong_sound':
+                    console.log('Received play_wrong_sound message - playing wrong sound');
+                    playWrongSound();
+                    break;
+            }
+        };
+
+        // Update score displays and player names
+        function updateScores() {
+            if (gameState.scores) {
+                document.getElementById('p1-amount').textContent = gameState.scores.p1 || 0;
+                document.getElementById('p2-amount').textContent = gameState.scores.p2 || 0;
+                document.getElementById('p3-amount').textContent = gameState.scores.p3 || 0;
+            }
+            
+            // Update player names if available
+            if (gameState.playerNames) {
+                const teamOneName = document.getElementById('team-one-name');
+                const teamTwoName = document.getElementById('team-two-name');
+                const teamThreeName = document.getElementById('team-three-name');
+                
+                if (teamOneName) teamOneName.textContent = gameState.playerNames.p1 || 'TEAM ONE';
+                if (teamTwoName) teamTwoName.textContent = gameState.playerNames.p2 || 'TEAM TWO';
+                if (teamThreeName) teamThreeName.textContent = gameState.playerNames.p3 || 'TEAM THREE';
+            }
+        }
+
+        // Show current question
+        function showQuestion(questionId) {
+            const questionDisplay = document.getElementById('question-display');
+            const [category, value] = questionId.split('-');
+            questionDisplay.innerHTML = `
+                <div style="font-size: 1.25em; margin-bottom: 0.5em;">🎯 QUESTION SELECTED 🎯</div>
+                <div>${category.toUpperCase()} for $${value}</div>
+                <div style="font-size: 1em; margin-top: 1em;">⏰ BUZZER ACTIVE - CAMPERS READY! ⏰</div>
+            `;
+        }
+
+        // Show who buzzed in
+        function showBuzzerWinner(playerId) {
+            const questionDisplay = document.getElementById('question-display');
+            if (questionDisplay) {
+                const playerName = gameState.playerNames && gameState.playerNames[playerId]
+                    ? gameState.playerNames[playerId]
+                    : `CAMPER ${playerId.slice(-1)}`;
+                questionDisplay.innerHTML = `
+                    <div style="font-size: 3vh; color: #FFD700;">🔥 ${playerName.toUpperCase()} BUZZED IN! 🔥</div>
+                    <div style="font-size: 2vh; margin-top: 2vh;">Host is judging the answer...</div>
+                `;
+            }
+        }
+
+        // Reset to waiting state
+        function resetToWaiting() {
+            const questionDisplay = document.getElementById('question-display');
+            questionDisplay.innerHTML = `
+                🏕️ GREAT ANSWER! 🏕️
+                <br><br>
+                Ready for the next question!
+            `;
+        }
+
+        // Update entire display
+        function updateDisplay() {
+            updateScores();
+        }
+
+        // Trigger running lights animation
+        function triggerLightsAnimation() {
+            console.log('triggerLightsAnimation called - lights will continue until Next Question is clicked');
+            const lightsContainer = document.getElementById('running-lights-container');
+            if (!lightsContainer) {
+                console.error('running-lights-container not found');
+                return;
+            }
+            console.log('Adding lights-flashing class');
+            lightsContainer.classList.add('lights-flashing');
+
+            // At 5 seconds, slide in the scoreboards while lights continue
+            setTimeout(() => {
+                console.log('Sliding in scoreboards - lights continue flashing');
+                document.getElementById('scoreboard-1').classList.add('slide-in');
+                document.getElementById('scoreboard-2').classList.add('slide-in');
+                document.getElementById('scoreboard-3').classList.add('slide-in');
+            }, 5000);
+
+            // Lights will continue flashing indefinitely until stopped by badge sequence
+        }
+
+        // Stop lights animation (called when badge sequence starts)
+        function stopLightsAnimation() {
+            console.log('Stopping lights animation');
+            const lightsContainer = document.getElementById('running-lights-container');
+            if (lightsContainer) {
+                lightsContainer.classList.remove('lights-flashing');
+                // Reset to default state: both lights hidden, only base visible
+                document.querySelector('.lights-1').style.opacity = '0';
+                document.querySelector('.lights-2').style.opacity = '0';
+            }
+        }
+
+        // Generate random badge sequence with progressive slowdown
+        function triggerBadgeSequence(targetBadge, usedBadges = []) {
+            console.log(`=== BADGE SEQUENCE START ===`);
+            console.log(`Target badge: ${targetBadge}`);
+            console.log('Used badges:', usedBadges);
+            console.log('Hidden badges:', Array.from(hiddenBadges));
+
+            // Stop the flashing lights when badge sequence starts
+            stopLightsAnimation();
+
+            // Generate random sequence with progressive slowdown
+            function generateRandomSequence(targetBadge, excludedBadges) {
+                // Get all available badges (1-12 minus excluded ones and target)
+                const allBadges = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+                const availableBadges = allBadges.filter(badge =>
+                    badge !== targetBadge &&
+                    !excludedBadges.includes(badge) &&
+                    !hiddenBadges.has(badge)
+                );
+
+                console.log('Available badges for random selection:', availableBadges);
+
+                if (availableBadges.length < 7) {
+                    console.warn('Not enough available badges for full sequence, using what we have');
+                }
+
+                // Generate 7 random badges (we'll add target as 8th)
+                const randomSequence = [];
+                const usedInSequence = new Set();
+
+                // Fill sequence with random selections
+                for (let i = 0; i < 7 && availableBadges.length > 0; i++) {
+                    // Get available badges not yet used in this sequence
+                    const availableForThis = availableBadges.filter(badge => !usedInSequence.has(badge));
+
+                    if (availableForThis.length === 0) {
+                        // If we run out, allow repeats but prefer different ones
+                        availableForThis.push(...availableBadges);
+                    }
+
+                    const randomIndex = Math.floor(Math.random() * availableForThis.length);
+                    const selectedBadge = availableForThis[randomIndex];
+                    randomSequence.push(selectedBadge);
+                    usedInSequence.add(selectedBadge);
+                }
+
+                // Add target badge as final selection
+                randomSequence.push(targetBadge);
+
+                return randomSequence;
+            }
+
+            const sequence = generateRandomSequence(targetBadge, usedBadges);
+            console.log('Generated random sequence:', sequence);
+
+            // Define progressive timing: 5 fast, 2 slowing down, final stays
+            const timings = [
+                200, 200, 200, 200, 200,  // First 5: fast (200ms each)
+                400,                       // 6th: slower (400ms)
+                800,                       // 7th: even slower (800ms)
+                0                          // Final: stays on
+            ];
+
+            console.log('Timing pattern:', timings);
+
+            let currentStep = 0;
+
+            function showNextBadge() {
+                console.log(`=== STEP ${currentStep + 1} of ${sequence.length} ===`);
+
+                // Clear all active badges
+                document.querySelectorAll('.badge-light').forEach(light => {
+                    light.classList.remove('active');
+                });
+
+                if (currentStep < sequence.length) {
+                    const badgeNum = sequence[currentStep];
+                    const duration = timings[currentStep] || 0;
+
+                    console.log(`Lighting badge ${badgeNum} for ${duration}ms`);
+                    const badgeLight = document.getElementById(`badge-light-${badgeNum}`);
+
+                    if (badgeLight && !hiddenBadges.has(badgeNum)) {
+                        badgeLight.classList.add('active');
+                        console.log(`✅ Badge ${badgeNum} lit`);
+
+                        // Play beep with different frequencies for different phases
+                        if (currentStep < 5) {
+                            // Fast phase: same higher pitch beeps (800Hz) - steps 0,1,2,3,4
+                            playBeep(800, 80, 0.2);
+                        } else if (currentStep === 5) {
+                            // Slowdown phase 1: slightly lower pitch (600Hz) - step 5
+                            playBeep(600, 120, 0.25);
+                        } else if (currentStep === 6) {
+                            // Slowdown phase 2: even lower pitch (450Hz) - step 6
+                            playBeep(450, 150, 0.3);
+                        } else {
+                            // Final selection: play selected.mp3 sound effect - step 7
+                            playSelectedSound();
+                        }
+                    } else if (hiddenBadges.has(badgeNum)) {
+                        console.log(`⚠️ Badge ${badgeNum} is hidden, skipping light`);
+                    } else {
+                        console.error(`❌ Could not find badge-light-${badgeNum}!`);
+                    }
+
+                    currentStep++;
+
+                    // Schedule next step (unless it's the final one that stays on)
+                    if (currentStep < sequence.length) {
+                        setTimeout(showNextBadge, duration);
+                    } else {
+                        console.log(`🎯 Badge sequence complete - merit_${targetBadge} selected!`);
+                        // Pulse the final selected badge light 3 times over 3 seconds
+                        pulseBadgeLight(targetBadge);
+                    }
+                }
+            }
+
+            showNextBadge();
+        }
+
+        // Pulse badge light on/off 3 times over 3 seconds
+        function pulseBadgeLight(badgeNum) {
+            console.log(`Starting pulse animation for badge ${badgeNum}`);
+            const badgeLight = document.getElementById(`badge-light-${badgeNum}`);
+
+            if (!badgeLight || hiddenBadges.has(badgeNum)) {
+                console.log(`Cannot pulse badge ${badgeNum} - not found or hidden`);
+                return;
+            }
+
+            let pulseCount = 0;
+            const totalPulses = 3;
+            const pulseDuration = 2000; // 2 seconds total
+            const onOffCycleDuration = pulseDuration / totalPulses; // 667ms per pulse (333ms on, 333ms off)
+
+            function doPulse() {
+                if (pulseCount >= totalPulses) {
+                    // Finished pulsing - leave light on
+                    badgeLight.classList.add('active');
+                    console.log(`Pulse animation complete for badge ${badgeNum}`);
+                    return;
+                }
+
+                // Turn off
+                badgeLight.classList.remove('active');
+                console.log(`Pulse ${pulseCount + 1} - OFF`);
+
+                setTimeout(() => {
+                    // Turn on
+                    badgeLight.classList.add('active');
+                    console.log(`Pulse ${pulseCount + 1} - ON`);
+                    pulseCount++;
+
+                    // Schedule next pulse after half cycle
+                    if (pulseCount < totalPulses) {
+                        setTimeout(doPulse, onOffCycleDuration / 2);
+                    }
+                }, onOffCycleDuration / 2);
+            }
+
+            // Start first pulse
+            doPulse();
+        }
+
+        // Track which badges have been used/hidden
+        let hiddenBadges = new Set();
+
+        // Second badge sequence animation - ending on merit_12
+        function triggerBadgeSequence2() {
+            console.log('Starting badge sequence 2 animation');
+            
+            // Define the sequence - mix of badges ending with badge-light-12 (merit_12)
+            // Filter out any badges that have already been used
+            let sequence = [7, 2, 10, 4, 1, 8, 3, 11, 6, 12];
+            sequence = sequence.filter(num => !hiddenBadges.has(num));
+            
+            // If the target badge (12) was filtered out, we have a problem - but let's ensure it's there
+            if (!sequence.includes(12)) {
+                sequence.push(12);
+            }
+            
+            const timings = sequence.map((_, index) => 
+                index < sequence.length - 1 ? 200 : 0
+            );
+            
+            let currentStep = 0;
+            
+            function showNextBadge() {
+                // Clear all active badges
+                document.querySelectorAll('.badge-light').forEach(light => {
+                    light.classList.remove('active');
+                });
+                
+                if (currentStep < sequence.length) {
+                    const badgeNum = sequence[currentStep];
+                    const duration = timings[currentStep];
+                    
+                    // Only show badges that haven't been hidden
+                    if (!hiddenBadges.has(badgeNum)) {
+                        const badgeLight = document.getElementById(`badge-light-${badgeNum}`);
+                        if (badgeLight) {
+                            badgeLight.classList.add('active');
+                            console.log(`Showing badge ${badgeNum} for ${duration}ms`);
+                        }
+                    }
+                    
+                    currentStep++;
+                    
+                    // Schedule next step (unless it's the final one that stays on)
+                    if (currentStep < sequence.length) {
+                        setTimeout(showNextBadge, duration);
+                    } else {
+                        console.log('Badge sequence 2 complete - merit_12 selected!');
+                    }
+                }
+            }
+            
+            showNextBadge();
+        }
+
+        // Dynamic font sizing based on text length
+        function getQuestionFontSize(text) {
+            const length = text.length;
+            if (length <= 80) return '10cqh';        // Short questions
+            if (length <= 120) return '8.5cqh';      // Medium questions
+            if (length <= 160) return '7.5cqh';      // Long questions
+            return '6.5cqh';                         // Very long questions
+        }
+
+        function getMultipleChoiceFontSize(choices) {
+            const maxLength = Math.max(...choices.map(choice => choice.length));
+            if (maxLength <= 25) return '7.5cqh';    // Short options
+            if (maxLength <= 35) return '6.5cqh';    // Medium options
+            return '5.5cqh';                         // Long options
+        }
+
+        // Function to prevent orphaned words by adding non-breaking spaces
+        function preventOrphanWords(text) {
+            // Split into words
+            const words = text.split(' ');
+            if (words.length <= 2) return text; // Don't modify very short text
+
+            // Add non-breaking space between the last 2 words to keep them together
+            const lastWords = words.slice(-2); // Last 2 words
+            const otherWords = words.slice(0, -2);
+
+            // Join last words with &nbsp; and rejoin with the rest
+            const lastWordsConnected = lastWords.join('&nbsp;');
+
+            if (otherWords.length > 0) {
+                return otherWords.join(' ') + ' ' + lastWordsConnected;
+            } else {
+                return lastWordsConnected;
+            }
+        }
+
+        // Wooden plank question/answer animation
+        function showQuestion(questionData) {
+            console.log('Showing question plank with data:', questionData);
+
+            // Update the question text with dynamic font sizing and orphan prevention
+            const questionText = document.getElementById('question-text-1');
+            if (questionText && questionData) {
+                const fontSize = getQuestionFontSize(questionData.question);
+                const processedQuestion = preventOrphanWords(questionData.question);
+                questionText.innerHTML = processedQuestion;
+                questionText.style.fontSize = fontSize;
+                console.log(`Question font size: ${fontSize} for ${questionData.question.length} chars`);
+            }
+
+            // Hide multiple choice text until explicitly shown
+            const mcText = document.getElementById('multiple-choice-text-1');
+            if (mcText) {
+                mcText.style.opacity = '0';
+            }
+
+            const plank = document.getElementById('question-plank-1');
+            if (plank) {
+                plank.classList.remove('show-answer', 'show-multiple-choice');
+                plank.classList.add('show-question');
+
+                // Play woosh sound when plank slides in
+                playWooshSound();
+            }
+
+            // Show dim overlay for focus
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+            }
+
+            // Hide the badge and badge light for this question
+            if (questionData && questionData.meritBadge) {
+                hideBadgeAndLight(questionData.meritBadge);
+            }
+        }
+        
+        function hideBadgeAndLight(badgeNumber) {
+            console.log(`Hiding badge and light ${badgeNumber}`);
+            
+            // Add to hidden badges set
+            hiddenBadges.add(badgeNumber);
+            
+            // Hide the merit badge
+            const meritBadge = document.getElementById(`merit-${badgeNumber}`);
+            if (meritBadge) {
+                meritBadge.style.opacity = '0';
+            }
+            
+            // Hide the badge light
+            const badgeLight = document.getElementById(`badge-light-${badgeNumber}`);
+            if (badgeLight) {
+                badgeLight.classList.remove('active');
+                badgeLight.style.opacity = '0';
+            }
+        }
+
+        // Physical challenge - show large merit badge instead of question text
+        function showPhysicalChallenge(questionData) {
+            console.log('Showing physical challenge with data:', questionData);
+
+            // Show the physical challenge plank container
+            const physicalContainer = document.getElementById('physical-plank-container');
+            if (physicalContainer) {
+                physicalContainer.style.display = 'block';
+            }
+
+            // Add merit badge to physical challenge plank
+            const badgeContainer = document.getElementById('physical-badge-container');
+            if (badgeContainer && questionData && questionData.meritBadge) {
+                badgeContainer.innerHTML = `<img src="${badgePrefix}merit_${questionData.meritBadge}.png" style="width: 100%; height: 100%; object-fit: contain;" alt="Merit Badge ${questionData.meritBadge}">`;
+            }
+
+            // Update the challenge text from question data
+            const physicalText = document.getElementById('physical-challenge-text');
+            if (physicalText && questionData && questionData.question) {
+                // Add line break before "Challenge" for better formatting
+                physicalText.innerHTML = questionData.question.replace(' Challenge', '<br>Challenge');
+            }
+
+            // Trigger slide animation after a brief delay to ensure display is set
+            const physicalPlank = document.getElementById('physical-plank');
+            if (physicalPlank) {
+                setTimeout(() => {
+                    physicalPlank.classList.add('show-physical-challenge');
+                }, 50); // Small delay to ensure display:block is processed
+            }
+
+            // Show dim overlay for focus
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+            }
+
+            // Hide the badge and badge light for this question from the main gameboard
+            if (questionData && questionData.meritBadge) {
+                hideBadgeAndLight(questionData.meritBadge);
+            }
+        }
+
+        function showTiebreaker() {
+            console.log('Showing tiebreaker');
+
+            // Show the physical challenge plank container (reuse for tiebreaker)
+            const physicalContainer = document.getElementById('physical-plank-container');
+            if (physicalContainer) {
+                physicalContainer.style.display = 'block';
+            }
+
+            // Add tie.png badge to physical challenge plank
+            const badgeContainer = document.getElementById('physical-badge-container');
+            if (badgeContainer) {
+                badgeContainer.innerHTML = `<img src="tie.png" style="width: 100%; height: 100%; object-fit: contain;" alt="Tiebreaker Badge">`;
+            }
+
+            // Change the text to Tiebreaker
+            const physicalText = document.getElementById('physical-challenge-text');
+            if (physicalText) {
+                physicalText.innerHTML = 'Tiebreaker';
+            }
+
+            // Trigger slide animation after a brief delay to ensure display is set
+            const physicalPlank = document.getElementById('physical-plank');
+            if (physicalPlank) {
+                setTimeout(() => {
+                    physicalPlank.classList.add('show-physical-challenge');
+                }, 50); // Small delay to ensure display:block is processed
+            }
+
+            // Show dim overlay for focus
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+            }
+        }
+
+        function hideTiebreakerAndShowWinner(winner, score) {
+            console.log('Hiding tiebreaker and showing winner:', winner, score);
+
+            // Hide the physical/tiebreaker plank with slide down animation
+            const physicalPlank = document.getElementById('physical-plank');
+            if (physicalPlank) {
+                physicalPlank.classList.remove('show-physical-challenge');
+            }
+
+            // After animation completes, hide container and show winner
+            setTimeout(() => {
+                const physicalContainer = document.getElementById('physical-plank-container');
+                if (physicalContainer) {
+                    physicalContainer.style.display = 'none';
+                }
+
+                // Play closing theme and show winner
+                playClosingTheme();
+                showWinner(winner, score);
+            }, 800); // Match the CSS transition duration
+        }
+
+        // Function to prevent line breaks within multiple choice options
+        function fixMultipleChoiceBreaks(choices) {
+            return choices.map(choice => {
+                // Replace ALL spaces with non-breaking spaces to keep each option as one unit
+                // "A) Some text here" becomes "A)&nbsp;Some&nbsp;text&nbsp;here"
+                return choice.replace(/\s+/g, '&nbsp;');
+            });
+        }
+
+        function showMultipleChoice(questionData) {
+            console.log('Showing multiple choice with data:', questionData);
+
+            // Update the multiple choice text with dynamic font sizing
+            const mcText = document.getElementById('multiple-choice-text-1');
+            if (mcText && questionData && questionData.multipleChoice) {
+                const fontSize = getMultipleChoiceFontSize(questionData.multipleChoice);
+                const fixedChoices = fixMultipleChoiceBreaks(questionData.multipleChoice);
+                // Join with <br> to put each option on separate lines
+                mcText.innerHTML = fixedChoices.join('<br>');
+                mcText.style.fontSize = fontSize;
+                mcText.style.lineHeight = '1.6'; // Add more spacing between lines
+                mcText.style.opacity = '1'; // Fade in the multiple choice text
+                console.log(`Multiple choice font size: ${fontSize} for choices:`, questionData.multipleChoice);
+            }
+
+            const plank = document.getElementById('question-plank-1');
+            if (plank) {
+                plank.classList.remove('show-question', 'show-answer');
+                plank.classList.add('show-multiple-choice');
+
+                // Play woosh sound when plank moves to multiple choice position
+                playWooshSound();
+            }
+
+            // Ensure dim overlay stays active
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+            }
+        }
+
+        function showAnswer(questionData) {
+            console.log('Showing answer with data:', questionData);
+
+            // Update the answer text
+            const answerText = document.getElementById('answer-text-1');
+            if (answerText && questionData) {
+                answerText.innerHTML = questionData.answer;
+            }
+
+            const plank = document.getElementById('question-plank-1');
+            if (plank) {
+                plank.classList.remove('show-question', 'show-multiple-choice');
+                plank.classList.add('show-answer');
+
+                // Play woosh sound when plank moves to answer position
+                playWooshSound();
+            }
+
+            // Ensure dim overlay stays active
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+            }
+        }
+
+        function hidePlank() {
+            console.log('Hiding plank');
+
+            // Play exit woosh sound when plank starts to hide
+            playExitWooshSound();
+
+            const plank = document.getElementById('question-plank-1');
+            if (plank) {
+                plank.classList.remove('show-question', 'show-multiple-choice', 'show-answer');
+            }
+
+            // Slide physical challenge plank back down before hiding
+            const physicalPlank = document.getElementById('physical-plank');
+            const physicalContainer = document.getElementById('physical-plank-container');
+            if (physicalPlank && physicalContainer) {
+                physicalPlank.classList.remove('show-physical-challenge');
+                // Wait for slide animation to complete before hiding container
+                setTimeout(() => {
+                    physicalContainer.style.display = 'none';
+                }, 1200); // Match the 1.2s transition duration
+            }
+
+            // Slide winner display back down before hiding
+            const winnerDisplay = document.getElementById('winner-display');
+            const winnerContainer = document.getElementById('winner-display-container');
+            if (winnerDisplay && winnerContainer) {
+                winnerDisplay.classList.remove('show-winner');
+                stopWinnerLightsAnimation();
+                // Wait for slide animation to complete before hiding container
+                setTimeout(() => {
+                    winnerContainer.style.display = 'none';
+                }, 1200); // Match the 1.2s transition duration
+            }
+
+            // Hide dim overlay when plank is hidden
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.remove('active');
+            }
+        }
+
+        // Show winner on the wooden plank
+        function showWinner(winnerName, score) {
+            console.log(`Showing winner: ${winnerName} with ${score} points`);
+
+            // Show the winner display container
+            const winnerContainer = document.getElementById('winner-display-container');
+            if (winnerContainer) {
+                winnerContainer.style.display = 'block';
+            }
+
+            // Update the winner text
+            const winnerText = document.getElementById('winner-text');
+            if (winnerText) {
+                winnerText.innerHTML = `
+                    <div class="winner-name">${winnerName}</div>
+                    <div class="winner-score">Winner with ${score} points!</div>
+                `;
+            }
+
+            // Trigger slide animation after a brief delay
+            const winnerDisplay = document.getElementById('winner-display');
+            if (winnerDisplay) {
+                setTimeout(() => {
+                    winnerDisplay.classList.add('show-winner');
+                }, 50);
+            }
+
+            // Start the flashing lights animation
+            startWinnerLightsAnimation();
+
+            // Show dim overlay for focus
+            const dimOverlay = document.getElementById('dim-overlay');
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+            }
+        }
+
+        // Winner lights animation functions
+        function startWinnerLightsAnimation() {
+            console.log('Starting winner lights animation');
+            const winnerContainer = document.getElementById('winner-display-container');
+            if (winnerContainer) {
+                winnerContainer.classList.add('winner-lights-flashing');
+            }
+        }
+
+        function stopWinnerLightsAnimation() {
+            console.log('Stopping winner lights animation');
+            const winnerContainer = document.getElementById('winner-display-container');
+            if (winnerContainer) {
+                winnerContainer.classList.remove('winner-lights-flashing');
+            }
+        }
+
+        // TV Cart control functions
+        function rollInTvCart() {
+            console.log('Rolling in TV cart and starting video');
+
+            // Play cartwheel sound when cart starts rolling in
+            playCartwheelSound();
+
+            const tvCartContainer = document.getElementById('tv-cart-container');
+            const video = document.getElementById('tv-video');
+            const dimOverlay = document.getElementById('dim-overlay');
+
+            console.log('Elements found:', {
+                tvCartContainer: !!tvCartContainer,
+                video: !!video,
+                dimOverlay: !!dimOverlay
+            });
+
+            // Show dim overlay for focus (same as questions)
+            if (dimOverlay) {
+                dimOverlay.classList.add('active');
+                console.log('Added dim overlay');
+            }
+
+            // Add roll-in class to container to trigger animation
+            if (tvCartContainer) {
+                tvCartContainer.classList.add('roll-in');
+                console.log('Added roll-in class to container');
+            }
+
+            // Start video playback with audio after user interaction
+            if (video) {
+                console.log('Video element:', video);
+                console.log('Video readyState:', video.readyState);
+                console.log('Video src:', video.currentSrc);
+                console.log('Video muted:', video.muted);
+                console.log('Video volume:', video.volume);
+                console.log('User interaction registered:', userInteractionRegistered);
+
+                // Configure audio based on whether gameboard was initialized
+                if (userInteractionRegistered) {
+                    // Gameboard was properly initialized - enable audio
+                    video.muted = false;
+                    video.volume = 1.0;
+
+                    // Set up audio boost via Web Audio API (1.2x volume)
+                    setupVideoAudioBoost();
+
+                    console.log('✅ Audio enabled - gameboard was initialized');
+                } else {
+                    // Gameboard not initialized - video will play muted
+                    video.muted = true;
+                    console.log('⚠️ Audio disabled - gameboard not initialized. Click "Start Game" button first for audio.');
+                }
+
+                // Reset video to beginning
+                video.currentTime = 0;
+
+                console.log('About to call video.play()...');
+                video.play().then(() => {
+                    console.log('✅ Video started playing with audio (will play once and freeze on final frame)');
+                    console.log('Video muted after play:', video.muted);
+                    console.log('Video volume after play:', video.volume);
+                }).catch(error => {
+                    console.error('❌ Error playing video:', error);
+                    console.log('Trying with muted as fallback...');
+                    video.muted = true;
+                    return video.play();
+                }).then(() => {
+                    console.log('Video playing (fallback mode, muted)');
+                }).catch(error => {
+                    console.error('Failed to play video even muted:', error);
+                });
+            }
+        }
+
+        function rollOutTvCart() {
+            console.log('Rolling out TV cart and stopping video');
+
+            // Play cartwheel sound when cart starts rolling out
+            playCartwheelSound();
+
+            const tvCartContainer = document.getElementById('tv-cart-container');
+            const video = document.getElementById('tv-video');
+            const dimOverlay = document.getElementById('dim-overlay');
+
+            // Remove dim overlay
+            if (dimOverlay) {
+                dimOverlay.classList.remove('active');
+                console.log('Removed dim overlay');
+            }
+
+            // Remove roll-in class from container to trigger roll-out animation
+            if (tvCartContainer) {
+                tvCartContainer.classList.remove('roll-in');
+                console.log('Removed roll-in class from container');
+            }
+
+            // Pause video
+            if (video) {
+                video.pause();
+                video.currentTime = 0; // Reset to beginning for next play
+            }
+        }
+
+        // User interaction state for audio playback
+        let userInteractionRegistered = false;
+
+        // Web Audio API beep generator
+        let audioContext;
+
+        // Video audio boost setup
+        let videoAudioSetup = false;
+
+        function initializeAudio() {
+            if (!audioContext && userInteractionRegistered) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('Audio context initialized');
+            }
+        }
+
+        function setupVideoAudioBoost() {
+            if (videoAudioSetup || !userInteractionRegistered) return;
+
+            try {
+                const video = document.getElementById('tv-video');
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                // Create audio source from video element
+                const source = audioContext.createMediaElementSource(video);
+
+                // Create gain node for volume boost (1.2 = 20% louder)
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 1.2;
+
+                // Connect: video -> gain -> speakers
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                videoAudioSetup = true;
+                console.log('✅ Video audio boost enabled (1.2x volume)');
+            } catch (error) {
+                console.error('Error setting up video audio boost:', error);
+            }
+        }
+
+        function playBeep(frequency = 800, duration = 100, volume = 0.3) {
+            if (!audioContext) {
+                console.log('Audio context not initialized - beep skipped');
+                return;
+            }
+
+            try {
+                // Create oscillator for the beep
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                // Connect nodes
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // Configure the beep
+                oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                oscillator.type = 'sine'; // Clean sine wave
+
+                // Create envelope (attack and decay)
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.01); // Quick attack
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000); // Decay
+
+                // Start and stop
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration / 1000);
+
+                console.log(`🔊 Beep: ${frequency}Hz for ${duration}ms`);
+            } catch (error) {
+                console.error('Error playing beep:', error);
+            }
+        }
+
+        function playBingSound() {
+            if (!audioContext) {
+                console.log('Audio context not initialized - bing skipped');
+                return;
+            }
+
+            try {
+                const now = audioContext.currentTime;
+                const duration = 0.6; // 600ms bell sound
+
+                // Create a bell-like sound with multiple harmonics
+                // Fundamental frequency and harmonics for a pleasant "bing"
+                const frequencies = [1000, 1500, 2000]; // Fundamental + harmonics
+                const volumes = [0.4, 0.2, 0.1]; // Decreasing volume for harmonics
+
+                frequencies.forEach((freq, index) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    // Connect nodes
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    // Configure oscillator
+                    oscillator.frequency.setValueAtTime(freq, now);
+                    oscillator.type = 'sine'; // Pure sine wave for clean bell tone
+
+                    // Create bell-like envelope: quick attack, exponential decay
+                    const volume = volumes[index];
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(volume, now + 0.01); // Very quick attack (10ms)
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Exponential decay
+
+                    // Start and stop
+                    oscillator.start(now);
+                    oscillator.stop(now + duration);
+                });
+
+                console.log('🔔 Bing sound played (bell-like tone)');
+            } catch (error) {
+                console.error('Error playing bing sound:', error);
+            }
+        }
+
+        function playWooshSound() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - woosh sound skipped');
+                return;
+            }
+
+            try {
+                const wooshAudio = document.getElementById('woosh-audio');
+                if (wooshAudio) {
+                    wooshAudio.currentTime = 0; // Reset to beginning
+                    wooshAudio.volume = 0.55; // Normalized volume
+                    wooshAudio.play().then(() => {
+                        console.log('🌪️ Woosh sound played');
+                    }).catch(error => {
+                        console.error('Error playing woosh sound:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with woosh sound:', error);
+            }
+        }
+
+        function playExitWooshSound() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - exit woosh sound skipped');
+                return;
+            }
+
+            try {
+                const exitWooshAudio = document.getElementById('woosh-exit-audio');
+                if (exitWooshAudio) {
+                    exitWooshAudio.currentTime = 0; // Reset to beginning
+                    exitWooshAudio.volume = 0.55; // Normalized volume
+                    exitWooshAudio.play().then(() => {
+                        console.log('🌪️ Exit woosh sound played');
+                    }).catch(error => {
+                        console.error('Error playing exit woosh sound:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with exit woosh sound:', error);
+            }
+        }
+
+        function playCartwheelSound() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - cartwheel sound skipped');
+                return;
+            }
+
+            try {
+                const cartwheelAudio = document.getElementById('cartwheel-audio');
+                if (cartwheelAudio) {
+                    cartwheelAudio.currentTime = 0; // Reset to beginning
+                    cartwheelAudio.volume = 0.55; // Normalized volume
+                    cartwheelAudio.play().then(() => {
+                        console.log('🛞 Cartwheel sound played');
+                    }).catch(error => {
+                        console.error('Error playing cartwheel sound:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with cartwheel sound:', error);
+            }
+        }
+
+        function playSelectedSound() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - selected sound skipped');
+                return;
+            }
+
+            try {
+                const selectedAudio = document.getElementById('selected-audio');
+                if (selectedAudio) {
+                    selectedAudio.currentTime = 0; // Reset to beginning
+                    selectedAudio.volume = 0.55; // Normalized volume
+                    selectedAudio.play().then(() => {
+                        console.log('🎯 Selected sound played');
+                    }).catch(error => {
+                        console.error('Error playing selected sound:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with selected sound:', error);
+            }
+        }
+
+        function playCorrectSound() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - correct sound skipped');
+                return;
+            }
+
+            try {
+                const correctAudio = document.getElementById('correct-audio');
+                if (correctAudio) {
+                    correctAudio.currentTime = 0; // Reset to beginning
+                    correctAudio.volume = 0.55; // Normalized volume
+                    correctAudio.play().then(() => {
+                        console.log('✅ Correct sound played');
+                    }).catch(error => {
+                        console.error('Error playing correct sound:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with correct sound:', error);
+            }
+        }
+
+        function playOpeningTheme() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - opening theme skipped');
+                return;
+            }
+
+            try {
+                const openingThemeAudio = document.getElementById('opening-theme-audio');
+                if (openingThemeAudio) {
+                    openingThemeAudio.currentTime = 0; // Reset to beginning
+                    openingThemeAudio.volume = 0.55; // Normalized volume
+                    openingThemeAudio.play().then(() => {
+                        console.log('🎵 Opening theme played');
+                    }).catch(error => {
+                        console.error('Error playing opening theme:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with opening theme:', error);
+            }
+        }
+
+        function playClosingTheme() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - closing theme skipped');
+                return;
+            }
+
+            try {
+                const closingThemeAudio = document.getElementById('closing-theme-audio');
+                if (closingThemeAudio) {
+                    closingThemeAudio.currentTime = 0; // Reset to beginning
+                    closingThemeAudio.volume = 0.55; // Normalized volume
+                    closingThemeAudio.play().then(() => {
+                        console.log('🎵 Closing theme played');
+                    }).catch(error => {
+                        console.error('Error playing closing theme:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with closing theme:', error);
+            }
+        }
+
+        // Trigger preshow lights animation - just lights, no scoreboards or theme
+        function triggerPreshowLightsAnimation() {
+            console.log('triggerPreshowLightsAnimation called - lights will loop until Start Game is clicked');
+            const lightsContainer = document.getElementById('running-lights-container');
+            if (!lightsContainer) {
+                console.error('running-lights-container not found');
+                return;
+            }
+            console.log('Adding lights-flashing class for preshow');
+            lightsContainer.classList.add('lights-flashing');
+            // Lights will continue flashing indefinitely until stopped
+        }
+
+        function playPreshowMusic() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - preshow music skipped');
+                return;
+            }
+
+            try {
+                const preshowMusicAudio = document.getElementById('preshow-music-audio');
+                if (preshowMusicAudio) {
+                    preshowMusicAudio.currentTime = 0; // Reset to beginning
+                    preshowMusicAudio.volume = 0.55; // Normalized volume
+                    preshowMusicAudio.loop = true; // Loop until stopped
+                    preshowMusicAudio.play().then(() => {
+                        console.log('🎵 Preshow music playing (looping)');
+                    }).catch(error => {
+                        console.error('Error playing preshow music:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with preshow music:', error);
+            }
+        }
+
+        function stopPreshowMusic() {
+            console.log('Stopping preshow music');
+            try {
+                const preshowMusicAudio = document.getElementById('preshow-music-audio');
+                if (preshowMusicAudio) {
+                    preshowMusicAudio.pause();
+                    preshowMusicAudio.currentTime = 0; // Reset to beginning
+                    console.log('🔇 Preshow music stopped');
+                }
+            } catch (error) {
+                console.error('Error stopping preshow music:', error);
+            }
+        }
+
+        function playWrongSound() {
+            if (!userInteractionRegistered) {
+                console.log('User interaction not registered - wrong sound skipped');
+                return;
+            }
+
+            try {
+                const wrongAudio = document.getElementById('wrong-audio');
+                if (wrongAudio) {
+                    wrongAudio.currentTime = 0; // Reset to beginning
+                    wrongAudio.volume = 0.55; // Normalized volume
+                    wrongAudio.play().then(() => {
+                        console.log('❌ Wrong sound played');
+                    }).catch(error => {
+                        console.error('Error playing wrong sound:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('Error with wrong sound:', error);
+            }
+        }
+
+        // Handle audio enable click
+        function initializeGameboard() {
+            console.log('🔊 Gameboard audio enabled');
+
+            // Notify server that audio is enabled
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'audio_enabled' }));
+            }
+            userInteractionRegistered = true;
+
+            // Initialize audio context
+            initializeAudio();
+
+            // Hide the start overlay with animation
+            const startOverlay = document.getElementById('start-overlay');
+            if (startOverlay) {
+                startOverlay.classList.add('hidden');
+
+                // Remove from DOM after animation completes
+                setTimeout(() => {
+                    startOverlay.remove();
+                }, 500);
+            }
+        }
+
+        // Set up entire overlay as clickable for audio initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const startOverlay = document.getElementById('start-overlay');
+            if (startOverlay) {
+                startOverlay.addEventListener('click', initializeGameboard);
+            }
+        });
+
+    </script>
+</body>
+</html>
