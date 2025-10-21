@@ -16,26 +16,26 @@ const GAME_DATASETS = {
     1: {
         badgePrefix: 'g1_',
         meritBadgeNames: {
-            5: "Cloud Connector",
-            3: "AI Readiness",
-            8: "Data Infrastructure",
-            9: "AI Fisherman",
-            12: "Bad Guy Buster",
-            1: "That Computes",
-            10: "Blog Jogger",
-            11: "Kong Pong"
+            5: "Firewood Badge",
+            3: "Hockey Badge",
+            8: "Physical Challenge",
+            9: "Red Nose Badge",
+            12: "Twin Badge",
+            1: "Balloon Badge",
+            10: "Thing-a-ma-jig Badge",
+            11: "Physical Challenge"
         },
         questions: [
             {
                 id: 1,
                 meritBadge: 5,
-                question: "In the movie Wet Hot American Summer, what is the name of the summer camp where the film is set?",
+                question: "In Wet Hot American Summer, who plays the eccentric camp counselor Gene who talks to a can of vegetables?",
                 multipleChoice: [
-                    "A) Camp Chipmunk",
-                    "B) Camp Firewood",
-                    "C) Camp North Star"
+                    "A) David Hyde Pierce",
+                    "B) Paul Rudd",
+                    "C) Christopher Meloni"
                 ],
-                answer: "Camp Firewood"
+                answer: "Christopher Meloni"
             },
             {
                 id: 2,
@@ -58,13 +58,13 @@ const GAME_DATASETS = {
             {
                 id: 4,
                 meritBadge: 9,
-                question: "Which iconic horror franchise's first installment is subtitled A New Beginning and takes place at a camp for troubled teens?",
+                question: "In a season 4 episode of the Simpsons, what kind of “refreshment” are the kids served at Kamp Krusty?",
                 multipleChoice: [
-                    "A) A Nightmare on Elm Street",
-                    "B) Scream",
-                    "C) Friday the 13th"
+                    "A) Krusty Burgers",
+                    "B) Krusty Brand Gruel",
+                    "C) Krusty Brand Imitation Gruel"
                 ],
-                answer: "Friday the 13th"
+                answer: "Krusty Brand Imitation Gruel"
             },
             {
                 id: 5,
@@ -512,7 +512,7 @@ wss.on('connection', (ws) => {
                     
                     if (data.result === 'correct') {
                         // Award points based on whether multiple choice was revealed
-                        const points = gameState.multipleChoiceRevealed ? 1 : 2;
+                        const points = gameState.multipleChoiceRevealed ? 1 : 3;
                         gameState.scores[gameState.activePlayer] += points;
                         gameState.gamePhase = 'CORRECT_ANSWER';
                         broadcast({ type: 'correct_answer', scores: gameState.scores, points: points });
